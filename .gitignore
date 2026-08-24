@@ -1,0 +1,40 @@
+# Datasets and derived training inputs.  Keep data/scripts/ under version control.
+/data/images/
+/data/align/
+/data/lam/
+/data/llm/
+/data/raw/
+/data/temp/
+
+# Training artifacts and model weights.
+/runs/
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+
+# Benchmark datasets; benchmark source files at the directory root are tracked.
+/benchmark/bench/
+
+# Generated experiment outputs.
+/ex/**/results*.json
+/ex/**/*.jsonl
+/ex/**/premerge_*.json
+/ex/**/latent_*.json
+/ex/test_align/results/
+
+# Python, local tooling, and logs.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.coverage
+.venv/
+venv/
+.env
+.env.*
+*.log
+*.pid
+*.out
+*.egg-info/
+.DS_Store

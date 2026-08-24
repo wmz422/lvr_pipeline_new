@@ -1,0 +1,29 @@
+- 背景：lvr_pipeline是我目前正在做的实验先看一下它数据的组织形式，由于我一开始扩展性做的太差，我决定重新做一个仓库，首先我想扩展数据集，所以我想先完成这个data目录。
+- 目录结构
+    - raw 下载下来的原始数据
+    - images 放处理前后的images
+        - original 放原图，例如original/TreeVGR-RL-37K/340787.jpg
+        - auxiliary 放辅助图，例如auxiliary/TreeVGR-RL-37K/340787.jpg
+    - lam，llm，align分别放三个阶段需要的train，test json文件，按版本目录组织，例如llm/v0/train.json、llm/v1/test.json，train:test=99:1
+    - scripts 放数据处理脚本
+        - download 放原始数据下载脚本
+        - generate 当需要扩展数据集时修改auxiliary_image和对应阶段的json生成脚本，auxiliary_image.py扩展时不重新生成
+            - auxiliary_image.py生成辅助图像， 根据一个或多个box在原图上生成宽度max(1, int(min(width, height) * 0.03))的红框
+            - lam.py 生成json，支持--version指定输出版本目录
+            - llm.py 生成json，支持--version指定输出版本目录，支持--include-sft合并/private/wmz/my_projects/sft/data中的train/test
+                - "question_image"
+                - "auxiliary_image"
+                - "question"
+                - "answer"
+                - "raw"这个放原始数据集名字和对应序号
+            - align.py 
+        - visible下面放streamlite实现的可视化脚本查看，启动app.py可以在浏览器查看，按版本、原始数据集过滤，包含原图和辅助图像，显示json中属性
+        - validate 检查生成的json和图片路径是否符合要求
+            - validate_llm.py 检查llm阶段的train，test json文件
+        - others 其他临时脚本或辅助工具
+- 任务
+    - 完成框架，align和lam阶段先不做
+    - 下载https://huggingface.co/datasets/HaochenWang/TreeVGR-RL-37K原始数据
+    - 完成auxiliary_image和llm生成脚本并在TreeVGR-RL-37K生成成功
+    - 完成可视化脚本
+    - 完成所有任务后检查是否符合我的要求
