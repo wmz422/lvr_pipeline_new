@@ -1,0 +1,18 @@
+[
+  {
+    "id": "0",
+    "prediction": "<abs_vis_token></abs_vis_token>\nA",
+    "predicted": "A",
+    "label": "A",
+    "correct": true,
+    "category": "direct_attributes"
+  },
+  {
+    "id": "1",
+    "prediction": "<abs_vis_token></abs_vis_token>\nC",
+    "predicted": "C",
+    "label": "C",
+    "correct": true,
+    "category": "direct_attributes"
+  }
+]

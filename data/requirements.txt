@@ -1,6 +1,0 @@
-pandas
-pyarrow
-huggingface_hub
-pillow
-streamlit
-tqdm

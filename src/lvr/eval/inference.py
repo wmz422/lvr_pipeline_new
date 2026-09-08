@@ -106,12 +106,14 @@ def known_latent_generate(
     gen_cfg: dict[str, Any],
     image_size: int | None = SFT_IMAGE_SIZE,
     system: str = "",
+    lam_image_size: int = SFT_IMAGE_SIZE,
 ) -> str:
     """Known-latent diagnostic generation.
 
     `images` must be `[question_image, auxiliary_image]`. Qwen receives only the
     question image, while LAM receives question+auxiliary and injects the latent
-    before text-only autoregressive answer generation.
+    before text-only autoregressive answer generation. ``lam_image_size`` must
+    match the LAM input resolution used during the evaluated SFT training run.
     """
     if len(images) < 2:
         raise ValueError("known_latent_generate requires images=[question_image, auxiliary_image].")
@@ -127,7 +129,6 @@ def known_latent_generate(
         int(model.hparams.lam_num_latent),
         latent_pad_token=model.hparams.latent_pad_token,
     )
-    #breakpoint()
     prompt = build_generation_prompt(processor, question, system=system, num_images=1) + latent_block
     batch = processor(
         text=[prompt],
@@ -140,7 +141,7 @@ def known_latent_generate(
         [{"question_image": question_image, "auxiliary_image": auxiliary_image}],
         lam_image_processor=processor.image_processor,
         image_root=None,
-        lam_image_size=SFT_IMAGE_SIZE,
+        lam_image_size=lam_image_size,
     )
 
     generated_ids = model.generate_align(
@@ -168,7 +169,6 @@ def baseline_generate(
 
     image_size=256 时与 SFT 同口径对照；image_size=None 时走 Qwen 原生动态分辨率（no-resize baseline）。
     """
-    #breakpoint()
     device = next(model.parameters()).device
     inputs = build_eval_inputs(processor, images, question, device, image_size, system)
 

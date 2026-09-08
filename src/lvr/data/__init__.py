@@ -1,4 +1,4 @@
-"""数据层：datamodule + dataset + collator（搬自旧 sft/src/dataset.py，逻辑不变）。"""
+"""Training datasets, prompt construction and collators."""
 
 from lvr.data.collator import AlignmentCollator, LatentCollator, PlainSFTCollator
 from lvr.data.datamodule import LatentDataModule

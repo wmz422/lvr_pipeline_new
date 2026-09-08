@@ -1,0 +1,24 @@
+{
+  "format": "lvr-json-shards-v1",
+  "records": 122896,
+  "shards": [
+    {
+      "file": "part-00000.json",
+      "records": 40762,
+      "bytes": 24999721,
+      "sha256": "06586abb5795f0bbcb8b6ba817afb3ceb17be9fdcbb43ce9ab1c64bc53c7dcd3"
+    },
+    {
+      "file": "part-00001.json",
+      "records": 42564,
+      "bytes": 24999492,
+      "sha256": "b04bff9a83504657879157a9b873d6a3a854bfe8fce5e6275f33fe9cc12d94be"
+    },
+    {
+      "file": "part-00002.json",
+      "records": 39570,
+      "bytes": 23241751,
+      "sha256": "e1f2eaa7d13a53223b9d7e35661fc2f7416e4fc3c036d1f027b8615e73a783c5"
+    }
+  ]
+}

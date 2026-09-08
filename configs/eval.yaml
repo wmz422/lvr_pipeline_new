@@ -1,0 +1,43 @@
+sft_image_size: null
+system_prompt: You are a helpful assistant.
+qwen_max_pixels: null
+generation:
+  max_new_tokens: 256
+  temperature: 0.0
+  do_sample: false
+  force_latent_end: true
+benchmarks:
+- vstar
+- mmvp
+- blink
+- hr_bench_4k
+- hr_bench_8k
+- mme_realworld_lite
+data:
+  vstar:
+    test_jsonl: benchmark/bench/vstar_bench/test_questions.jsonl
+    image_dir: benchmark/bench/vstar_bench
+  mmvp:
+    csv_file: benchmark/bench/MMVP/Questions.csv
+    image_dir: benchmark/bench/MMVP/MMVP_Images
+  blink:
+    dataset_name: benchmark/bench/BLINK
+    configs:
+    - Counting
+    - IQ_Test
+    - Jigsaw
+    - Relative_Reflectance
+    - Spatial_Relation
+  hr_bench_4k:
+    dataset_path: benchmark/bench/hr_bench_4k
+    task_instruction: '
+
+      Answer with the option''s letter from the given choices directly.'
+  hr_bench_8k:
+    dataset_path: benchmark/bench/hr_bench_8k
+    task_instruction: '
+
+      Answer with the option''s letter from the given choices directly.'
+  mme_realworld_lite:
+    dataset_path: benchmark/bench/mme_realworld_lite
+    use_l2_category: false

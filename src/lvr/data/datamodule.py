@@ -1,11 +1,4 @@
-"""Lightning 数据模块。
-
-fit 阶段构造 train/test 两个 dataset；validate/test 复用 test split。
-processor 在 setup 中懒加载，避免 import 阶段就加载 Qwen 资源。
-
-（搬自旧 sft/src/dataset.py 的 SftDataModule，逻辑不变。去掉 DEFAULT_IMAGE_ROOT 硬编码，
-image_root 改为必须由 config 提供；special token 注册委托给 lvr.tokens.register_latent_tokens。）
-"""
+"""Lightning data module with lazy processor setup and explicit image roots."""
 
 from __future__ import annotations
 
@@ -45,6 +38,10 @@ class LatentDataModule(pl.LightningDataModule):
         system_prompt: str = "",            # 非空时 collator 插 system 消息（默认 ""=原行为）
         qwen_dynamic_resolution: bool = False,  # True=Qwen 图原生动态分辨率（LAM 仍 lam_image_size）
         qwen_max_pixels: int | None = None,  # 动态分辨率的像素上限 cap（防大图撑爆 max_length）
+        pin_memory: bool = True,
+        persistent_workers: bool = True,
+        prefetch_factor: int | None = 4,
+        build_shuffle_lam_inputs: bool = False,
     ) -> None:
         super().__init__()
         if stage not in _STAGE_SPEC:
@@ -67,6 +64,10 @@ class LatentDataModule(pl.LightningDataModule):
         self.system_prompt = system_prompt
         self.qwen_dynamic_resolution = qwen_dynamic_resolution
         self.qwen_max_pixels = qwen_max_pixels
+        self.pin_memory = pin_memory
+        self.persistent_workers = persistent_workers
+        self.prefetch_factor = prefetch_factor
+        self.build_shuffle_lam_inputs = build_shuffle_lam_inputs
         self._spec = _STAGE_SPEC[stage]
 
         self.processor = None  # 懒加载，加载过就不再重复
@@ -79,7 +80,9 @@ class LatentDataModule(pl.LightningDataModule):
             path,
             limit,
             target_key=self._spec["target_key"],
-            include_shuffle_auxiliary=self._spec["shuffle_auxiliary"],
+            include_shuffle_auxiliary=(
+                self._spec["shuffle_auxiliary"] and self.build_shuffle_lam_inputs
+            ),
         )
 
     def setup(self, stage: str | None = None) -> None:
@@ -113,31 +116,33 @@ class LatentDataModule(pl.LightningDataModule):
     def train_dataloader(self) -> DataLoader:
         if self.train_dataset is None:
             self.setup("fit")
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            collate_fn=self._collator(),
-        )
+        return self._make_dataloader(self.train_dataset, shuffle=True)
 
     def val_dataloader(self) -> DataLoader:
         if self.test_dataset is None:
             self.setup("validate")
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            collate_fn=self._collator(),
-        )
+        return self._make_dataloader(self.test_dataset, shuffle=False)
 
     def test_dataloader(self) -> DataLoader:
         return self.val_dataloader()
 
+    def _make_dataloader(self, dataset: LatentDataset, *, shuffle: bool) -> DataLoader:
+        kwargs = {
+            "batch_size": self.batch_size,
+            "shuffle": shuffle,
+            "num_workers": self.num_workers,
+            "pin_memory": self.pin_memory,
+            "collate_fn": self._collator(),
+        }
+        if self.num_workers > 0:
+            kwargs["persistent_workers"] = self.persistent_workers
+            if self.prefetch_factor is not None:
+                kwargs["prefetch_factor"] = self.prefetch_factor
+        return DataLoader(dataset, **kwargs)
+
     def _collator(self):
         collator_cls = self._spec["collator"]  # LatentCollator(sft) | AlignmentCollator(align)
-        return collator_cls(
+        kwargs = dict(
             processor=self.processor,
             lam_image_processor=self.lam_image_processor,
             image_root=self.image_root,
@@ -147,3 +152,6 @@ class LatentDataModule(pl.LightningDataModule):
             system_prompt=self.system_prompt,
             qwen_dynamic_resolution=self.qwen_dynamic_resolution,
         )
+        if collator_cls is AlignmentCollator:
+            kwargs["build_shuffle_lam_inputs"] = self.build_shuffle_lam_inputs
+        return collator_cls(**kwargs)

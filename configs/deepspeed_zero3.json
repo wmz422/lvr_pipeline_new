@@ -1,0 +1,27 @@
+{
+  "zero_force_ds_cpu_optimizer": false,
+  "zero_allow_untested_optimizer": true,
+  "zero_optimization": {
+    "stage": 3,
+    "contiguous_gradients": true,
+    "overlap_comm": true,
+    "allgather_partitions": true,
+    "reduce_scatter": true,
+    "allgather_bucket_size": 500000000,
+    "reduce_bucket_size": 500000000,
+    "sub_group_size": 1000000000000
+  },
+  "activation_checkpointing": {
+    "partition_activations": true,
+    "cpu_checkpointing": false,
+    "contiguous_memory_optimization": true,
+    "synchronize_checkpoint_boundary": false
+  },
+  "aio": {
+    "block_size": 1048576,
+    "queue_depth": 8,
+    "single_submit": false,
+    "overlap_events": true,
+    "thread_count": 1
+  }
+}

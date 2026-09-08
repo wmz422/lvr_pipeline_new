@@ -1,0 +1,16 @@
+# Core versions used for the offline export and inference verification.
+torch==2.5.1
+torchvision==0.20.1
+transformers==5.15.0
+lightning==2.6.5
+deepspeed==0.16.4
+huggingface-hub==1.26.0
+datasets==5.0.1
+safetensors==0.8.0
+jsonargparse==4.51.0
+accelerate==1.14.0
+einops==0.8.2
+Pillow==12.3.0
+PyYAML==6.0.3
+pyarrow==24.0.0
+pandas==3.0.5

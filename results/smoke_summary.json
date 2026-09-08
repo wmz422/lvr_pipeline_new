@@ -1,0 +1,74 @@
+{
+  "vstar": {
+    "benchmark": "vstar",
+    "total": 2,
+    "correct": 2,
+    "accuracy": 100.0,
+    "categories": {
+      "direct_attributes": {
+        "total": 2,
+        "correct": 2,
+        "accuracy": 100.0
+      }
+    }
+  },
+  "mmvp": {
+    "benchmark": "mmvp",
+    "total": 2,
+    "correct": 1,
+    "accuracy": 50.0,
+    "categories": {}
+  },
+  "blink": {
+    "benchmark": "blink",
+    "total": 2,
+    "correct": 1,
+    "accuracy": 50.0,
+    "categories": {
+      "Counting": {
+        "total": 2,
+        "correct": 1,
+        "accuracy": 50.0
+      }
+    }
+  },
+  "hr_bench_4k": {
+    "benchmark": "hr_bench_4k",
+    "total": 2,
+    "correct": 2,
+    "accuracy": 100.0,
+    "categories": {
+      "single": {
+        "total": 2,
+        "correct": 2,
+        "accuracy": 100.0
+      }
+    }
+  },
+  "hr_bench_8k": {
+    "benchmark": "hr_bench_8k",
+    "total": 2,
+    "correct": 2,
+    "accuracy": 100.0,
+    "categories": {
+      "single": {
+        "total": 2,
+        "correct": 2,
+        "accuracy": 100.0
+      }
+    }
+  },
+  "mme_realworld_lite": {
+    "benchmark": "mme_realworld_lite",
+    "total": 2,
+    "correct": 2,
+    "accuracy": 100.0,
+    "categories": {
+      "Perception/Remote Sensing": {
+        "total": 2,
+        "correct": 2,
+        "accuracy": 100.0
+      }
+    }
+  }
+}

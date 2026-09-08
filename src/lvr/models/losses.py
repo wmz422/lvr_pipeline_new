@@ -1,7 +1,7 @@
-"""loss：文本 CE + latent 位 MSE。
+"""loss：文本 CE + causal latent MSE。
 
-搬自旧 sft/src/model.py：CE 走 Qwen 自带 loss_function；MSE 比较 latent 位注入 embedding
-与 Qwen 输出 hidden state（鼓励 latent 位 hidden 与注入表示一致，为推理 latent 自回归做准备）。
+CE 走 Qwen 自带 loss_function；MSE 用前一位置的 Qwen hidden state 预测下一位置注入的
+latent embedding，与推理时的 latent 自回归保持一致。
 λ 组合（loss = ce + λ·mse）在 LatentVLM 里完成。
 """
 
@@ -45,6 +45,9 @@ def latent_mse_loss(
     inputs_embeds: torch.Tensor,
     hidden_states: torch.Tensor,
 ) -> torch.Tensor:
-    latent_inputs = inputs_embeds[latent_mask]
-    latent_hidden = hidden_states[latent_mask]
-    return nn.functional.mse_loss(latent_inputs, latent_hidden)
+    # Causal alignment: hidden state at position i predicts the latent embedding
+    # at position i + 1.  In particular, h(<latent_start>) is supervised by p0.
+    target_mask = latent_mask[:, 1:]
+    latent_targets = inputs_embeds[:, 1:, :][target_mask]
+    latent_predictions = hidden_states[:, :-1, :][target_mask]
+    return nn.functional.mse_loss(latent_predictions, latent_targets)

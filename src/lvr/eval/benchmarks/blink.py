@@ -1,7 +1,4 @@
-"""BLINK benchmark。搬自旧 sft/evaluation/benchmarks/blink.py，逻辑不变。
-
-注：多图（1-4 张 PIL），SFT 训练为单图分布，BLINK 属 OOD，默认 eval_bench.yaml 不开启。
-"""
+"""BLINK validation subsets with one to four images per question."""
 
 from __future__ import annotations
 
@@ -26,6 +23,8 @@ class BLINKBenchmark(BaseBenchmark):
             ds = load_from_disk(f"{self.data_config['dataset_name']}/{config}")
             val_ds = ds["val"]
             for item in val_ds:
+                if self.data_config.get("limit") is not None and len(samples) >= int(self.data_config["limit"]):
+                    return samples
                 answer = item["answer"]
                 ans = answer[1].upper() if len(answer) > 1 else answer[0].upper()
 

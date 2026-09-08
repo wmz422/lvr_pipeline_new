@@ -1,0 +1,62 @@
+{
+  "lam/train": {
+    "source": "lam/v1/train.json",
+    "source_sha256": "888fdecfae5cbcffc6588e409b3bf235f5c7805d5a973188493ad8b9481f995d",
+    "records": 641682,
+    "shards": 4
+  },
+  "lam/test": {
+    "source": "lam/v0/test.json",
+    "source_sha256": "25ed4f5a7e580a7fa3a4a49255982ac41e086ed5d671b700b0fcb736c2be9432",
+    "records": 1000,
+    "shards": 1
+  },
+  "align/train": {
+    "source": "align/v0/train.json",
+    "source_sha256": "040b5206f9788ac2fa51059873b0b9a6dff958a87d3407df7bb595711073a771",
+    "records": 122896,
+    "shards": 3
+  },
+  "align/test": {
+    "source": "align/v0/test.json",
+    "source_sha256": "b36e7d269dbfcfee2c47e86be2951c7477857749c6ef4ee599e25a086d706e0b",
+    "records": 1242,
+    "shards": 1
+  },
+  "align/test_filtered": {
+    "source": "align/v1/test.json",
+    "source_sha256": "d297119d2114763b78920cc702ab8fb1d7c31f7a9adbf3cd3ea298507998015a",
+    "records": 1062,
+    "shards": 1
+  },
+  "sft/train": {
+    "source": "llm/v1/train.json",
+    "source_sha256": "6ae824b974908d5b1741ca81ca9cd35c2fe9339ea5ae6e5ab55c82bf7eb90f3a",
+    "records": 122896,
+    "shards": 2
+  },
+  "sft/test": {
+    "source": "llm/v1/test.json",
+    "source_sha256": "c2bfaf469272c76ad70cb7018bca6820e4079f4e77fc30c9073ed6cb1c6ac760",
+    "records": 1242,
+    "shards": 1
+  },
+  "images": {
+    "pairs": 730068,
+    "sources": {
+      "visual_cot": 404109,
+      "coco2014": 19732,
+      "gqa": 102035,
+      "treevgr": 36752,
+      "coco2017": 70215,
+      "mme_realworld_lite": 1919,
+      "visdrone": 7019,
+      "hr_bench_8k": 200,
+      "blink": 263,
+      "hr_bench_4k": 200,
+      "vstar": 238,
+      "monet_visual_cot": 87386
+    },
+    "shards": 8
+  }
+}

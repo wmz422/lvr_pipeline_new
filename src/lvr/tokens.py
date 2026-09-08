@@ -1,9 +1,4 @@
-"""latent special token 常量与注册 helper —— 数据侧与模型侧共用的唯一入口。
-
-旧 sft 在 dataset.py 与 model.py 两处各注册一遍 special token（见 CLAUDE.md §2.B）。
-这里收敛成一个 helper，data 的 collator/datamodule 与 models 的 builder 都调它，
-保证两侧 tokenizer 的 latent token id 一致。
-"""
+"""Shared latent special tokens and idempotent tokenizer registration."""
 
 from __future__ import annotations
 

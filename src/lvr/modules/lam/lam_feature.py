@@ -14,7 +14,7 @@ from torch import Tensor
 #from transformers import AutoProcessor
 
 
-def _load_qwen3_vision_model(save_dir: str) -> Qwen3VLVisionModel:
+def _load_qwen3_vision_model(save_dir: str, load_weights: bool = True) -> Qwen3VLVisionModel:
     """Load the vision tower from either a standalone or full Qwen3-VL tree.
 
     The local Qwen3-VL checkpoint is a full-model sharded checkpoint, while
@@ -31,6 +31,8 @@ def _load_qwen3_vision_model(save_dir: str) -> Qwen3VLVisionModel:
         return Qwen3VLVisionModel.from_pretrained(save_dir, torch_dtype=torch.float32)
 
     vision_model = Qwen3VLVisionModel(vision_config)
+    if not load_weights:
+        return vision_model
     expected = set(vision_model.state_dict())
     loaded: dict[str, torch.Tensor] = {}
     # The Qwen3-VL repository is a full-model checkpoint.  The vision tower
@@ -92,7 +94,8 @@ class LatentActionModel(nn.Module):
             feature_space: bool=False,
             image_dim: int=1024,#qwen image encoder结果维度
             num_latent:int=4, #这里是latent token数量
-            save_dir: str = None  # Qwen3 vision encoder 权重目录，必填（builder.build_lam 传入，无代码内默认路径）
+            save_dir: str = None,
+            load_vision_weights: bool = True,
     ) -> None:
         if not save_dir:
             raise ValueError("LatentActionModel 需要 save_dir（Qwen3 vision encoder 权重目录，由 config 提供）。")
@@ -118,7 +121,7 @@ class LatentActionModel(nn.Module):
         self.fc = nn.Linear(model_dim, latent_dim * 2)#latent_dim=64,前32均值，后32方差
         self.encoder_proj = nn.Linear(image_dim, model_dim)#对齐qwen和model dim
         self.decoder_proj=nn.Linear(model_dim,image_dim)
-        self.visual_encoder = _load_qwen3_vision_model(save_dir)
+        self.visual_encoder = _load_qwen3_vision_model(save_dir, load_weights=load_vision_weights)
         self.action_up = nn.Linear(latent_dim, model_dim)
         self.decoder = SpatioTransformer(
             in_dim=model_dim,
@@ -146,7 +149,6 @@ class LatentActionModel(nn.Module):
         # Encode
         z = self.encoder(padded_patches)  # (B, T, 1+N, E) [B,2,257,1024]
         # Get latent action for all future frames
-        #breakpoint()
         z = z[:,1:, :self.num_latent]  # (B, T-1, num_latent, E)取出第二帧的a
 
         # VAE
@@ -174,9 +176,7 @@ class LatentActionModel(nn.Module):
 
     def forward(self, batch: Dict) -> Dict:
         """返回 z_rep 以及用于 LAM 自身训练的 feature 重建输出。"""
-        #breakpoint()
         # Encode + VAE
-        #breakpoint()
         #H, W = batch["videos"].shape[2:4]
         features=self.get_images_features(batch)
         outputs = self.encode(self.encoder_proj(features))#feature[B,T,S,D]
@@ -184,7 +184,6 @@ class LatentActionModel(nn.Module):
         action_patches = self.action_up(outputs["z_rep"])
         video_action_patches = torch.cat([action_patches,video_patches],dim=2)
 
-        # breakpoint()
         # Decode
         video_recon = self.decoder(video_action_patches)[:,:,self.num_latent:]
 
@@ -221,7 +220,6 @@ class LatentActionModel(nn.Module):
             )
         pixel_values = pixel_values.reshape(-1, D)
         grid_thw = batch["image_grid_thw"].reshape(-1, 3)
-        #breakpoint()
         self.visual_encoder.eval()
         
         with torch.no_grad():

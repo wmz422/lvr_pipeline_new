@@ -1,13 +1,4 @@
-"""手写自回归 generate —— 支持 latent 模式自动切换。
-
-- 正常文本生成 → 模型生成 <abs_vis_token> 时进入 latent 模式
-- latent 模式：hidden_state 直接作为下一步 embedding（不过 lm_head），连续 latent_len 步
-- latent 模式结束后自动切回文本模式
-
-搬自旧 sft/src/model.py 的 generate()，**行为按原样保留**（ADR-2）：
-仍是 batch_size=1 的 greedy/no-cache-friendly 初版（eos 与 3D position_id 的已知 bug 不修）。
-prefill 的 vision 注入复用 injection.inject_vision（与训练 forward 共用，消灭重复）。
-"""
+"""Autoregressive decoding with a fixed-length latent phase and known-latent diagnostic generation."""
 
 from __future__ import annotations
 
@@ -35,7 +26,6 @@ def generate(
     训练时的 latent 块分隔符），而非让模型自由采样。诊断用——self-rollout 把状态带偏后，本应
     生成的 `</abs_vis_token>` 退化成乱码；强制喂回真 end token 可把状态踩回 token embedding 流形、
     还原训练结构 `[start][latent×L][end]\\n[answer]`。默认 False（保持原 generate 行为，ADR-2）。"""
-    #breakpoint()
     if model.qwen is None or model.tokenizer is None:
         raise RuntimeError("Model not initialized for generation.")
 
@@ -48,11 +38,17 @@ def generate(
     if eos_id is None:
         eos_id = model.tokenizer.pad_token_id
 
-    input_ids = batch.get("generation_input_ids", batch["input_ids"])
-    attention_mask = batch.get("generation_attention_mask", batch.get("attention_mask"))
+    input_ids = batch.get("generation_input_ids")
+    if input_ids is None:
+        input_ids = batch["input_ids"]
+    attention_mask = batch.get("generation_attention_mask")
+    if attention_mask is None:
+        attention_mask = batch.get("attention_mask")
     pixel_values = batch.get("pixel_values")
     image_grid_thw = batch.get("image_grid_thw")
-    mm_token_type_ids = batch.get("generation_mm_token_type_ids", batch.get("mm_token_type_ids"))
+    mm_token_type_ids = batch.get("generation_mm_token_type_ids")
+    if mm_token_type_ids is None:
+        mm_token_type_ids = batch.get("mm_token_type_ids")
 
     batch_size = input_ids.size(0)
     device = input_ids.device
@@ -94,7 +90,9 @@ def generate(
 
     for _ in range(max_new_tokens):  # 本质：kv cache 与 next embedding 不停喂给 forward
         non_latent_mask = ~in_latent
-        latent_mask = in_latent
+        # Snapshot before the text branch changes in_latent: the start-token
+        # embedding must not consume one of the continuous latent steps.
+        latent_mask = in_latent.clone()
 
         # 默认：hidden 直接作为下一步（latent 样本用）
         next_embeds = hidden.unsqueeze(1).clone()
@@ -208,12 +206,14 @@ def generate_align(
     top_p: float | None = None,
     top_k: int | None = None,
     do_sample: bool = False,
+    latent_condition: str = "correct",
 ) -> torch.Tensor:
     """Alignment 推理模式 generate —— latent 作为**已知**在 prefill 注入，纯文本自回归生成。
 
     与 SFT generate() 的本质差别（CLAUDE.md M7 留待项 `generate_observation` 的接入）：
     - latent **不是模型生成的**：从 LAM 在线算 (compute_latents) → projector 映射 →
       注入到 prompt 里 latent_pad 位（injection.inject_latents，与训练 forward 同源）。
+      ``latent_condition`` 可选择正确配对、错配辅助图或全零 latent，用于消融。
     - 解码循环**只走文本分支**：绝不进入 latent self-rollout（latent 已知，不需要生成）。
     要求 batch 含 `generation_input_ids`（prefix + latent_block，AlignmentCollator 产出）与
     `lam_inputs`（question+auxiliary 图像，benchmark 数据没有 auxiliary，故只能跑 test 集）。
@@ -231,15 +231,25 @@ def generate_align(
     if eos_id is None:
         eos_id = model.tokenizer.pad_token_id
 
-    input_ids = batch.get("generation_input_ids", batch["input_ids"])
-    attention_mask = batch.get("generation_attention_mask", batch.get("attention_mask"))
+    input_ids = batch.get("generation_input_ids")
+    if input_ids is None:
+        input_ids = batch["input_ids"]
+    attention_mask = batch.get("generation_attention_mask")
+    if attention_mask is None:
+        attention_mask = batch.get("attention_mask")
     pixel_values = batch.get("pixel_values")
     image_grid_thw = batch.get("image_grid_thw")
-    mm_token_type_ids = batch.get("generation_mm_token_type_ids", batch.get("mm_token_type_ids"))
-    lam_inputs = batch.get("lam_inputs")
-    if lam_inputs is None:
+    mm_token_type_ids = batch.get("generation_mm_token_type_ids")
+    if mm_token_type_ids is None:
+        mm_token_type_ids = batch.get("mm_token_type_ids")
+    if latent_condition not in {"correct", "shuffled", "zero"}:
+        raise ValueError(f"Unknown latent_condition: {latent_condition}")
+    lam_inputs = batch.get(
+        "shuffle_lam_inputs" if latent_condition == "shuffled" else "lam_inputs"
+    )
+    if latent_condition != "zero" and lam_inputs is None:
         raise RuntimeError(
-            "generate_align requires batch['lam_inputs'] (question+auxiliary image) to compute "
+            "generate_align requires LAM inputs (question+auxiliary image) to compute "
             "the known latent. Benchmark data has no auxiliary image — run on the test split."
         )
 
@@ -247,8 +257,17 @@ def generate_align(
     device = input_ids.device
 
     # ---------- latent: LAM → projector → 注入 latent_pad 位（与训练 forward 同源）----------
-    latent = injection.compute_latents(model.lam, lam_inputs, device, model._compute_dtype())
-    mapped_latent = model.latent_projector(latent)
+    if latent_condition == "zero":
+        mapped_latent = torch.zeros(
+            input_ids.size(0),
+            int(model.hparams.lam_num_latent),
+            model.latent_projector.out_features,
+            device=device,
+            dtype=next(model.latent_projector.parameters()).dtype,
+        )
+    else:
+        latent = injection.compute_latents(model.lam, lam_inputs, device, model._compute_dtype())
+        mapped_latent = model.latent_projector(latent)
     latent_mask = input_ids.eq(model.latent_pad_token_id)
     inputs_embeds = injection.inject_latents(model.qwen, input_ids, mapped_latent, latent_mask)
 

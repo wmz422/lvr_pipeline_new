@@ -1,17 +1,4 @@
-"""Prompt 构造 + 图像预处理的**单一真源**。
-
-训练 collator、test_step 的生成路径、以及 M6 的 benchmark 评估，全部共用这里的实现，
-消灭旧 `evaluation/inference.py` 自带的第二套 prompt 构造（§2.D 的漂移源）。
-
-两件事统一在此：
-1. **生成 prompt（path B）**：`build_generation_prompt` 产出与**训练前缀逐字一致**的 prompt
-   —— 即 `…<|im_end|>\n<|im_start|>assistant\n`（含 assistant 起始标记，空 think 块已去）。
-   做法是「插 sentinel → 渲染整段对话模板 → 去 think/observation 标签 → 按 sentinel 切，取前缀」，
-   因此它**就是**模型训练时 answer/latent 之前真正看到的那段，天然不会和训练漂移
-   Qwen3 Thinking 模板自动插入的空 `<think>` scaffold 由 `strip_auto_think_prompt` 统一清理。
-2. **图像预处理**：`load_resized_rgb` —— cv2 读图 BGR→RGB、resize 到 256×256 INTER_AREA，
-   与 LAM/训练完全一致；同时支持传入 PIL.Image（benchmark 加载器常给 PIL）。
-"""
+"""Shared chat prompts and image preprocessing for training, inference and evaluation."""
 
 from __future__ import annotations
 

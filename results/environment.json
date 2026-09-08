@@ -1,0 +1,31 @@
+{
+  "python": "3.12.13 | packaged by conda-forge | (main, Mar  5 2026, 16:50:00) [GCC 14.3.0]",
+  "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.39",
+  "cuda": "12.4",
+  "gpu": "NVIDIA A100-SXM4-80GB",
+  "packages": {
+    "torch": "2.5.1",
+    "torchvision": "0.20.1",
+    "transformers": "5.15.0",
+    "lightning": "2.6.5",
+    "deepspeed": "0.16.4",
+    "huggingface_hub": "1.26.0",
+    "datasets": "5.0.1",
+    "safetensors": "0.8.0",
+    "jsonargparse": "4.51.0",
+    "numpy": "2.5.1",
+    "Pillow": "12.3.0",
+    "opencv-python": "4.12.0",
+    "einops": "0.8.2",
+    "PyYAML": "6.0.3",
+    "pandas": "3.0.5",
+    "pyarrow": "24.0.0",
+    "accelerate": "1.14.0",
+    "tokenizers": "0.22.2"
+  },
+  "runtime_versions": {
+    "torch": "2.5.1",
+    "numpy": "2.5.2"
+  },
+  "verification_date": "2026-09-08"
+}

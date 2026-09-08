@@ -1,4 +1,4 @@
-"""MMVP benchmark。搬自旧 sft/evaluation/benchmarks/mmvp.py，逻辑不变。"""
+"""MMVP questions and per-question accuracy, preserving the recorded evaluation protocol."""
 
 from __future__ import annotations
 

@@ -1,0 +1,10 @@
+{
+  "strict_load": true,
+  "latent_shape": [
+    4,
+    32
+  ],
+  "all_finite": true,
+  "matches_bundled_lam": true,
+  "latent_sha256": "13eb2f034b0a7f5b8d5d387ed14e8543f8fc54d8802c3ff0d8c066ce033a9efd"
+}

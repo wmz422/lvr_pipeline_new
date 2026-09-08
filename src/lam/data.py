@@ -17,6 +17,7 @@ import torch
 from torch.utils.data import Dataset
 
 from lvr.data.prompt import load_resized_rgb
+from lvr.data.records import read_records
 
 
 class LAMPairDataset(Dataset):
@@ -29,8 +30,7 @@ class LAMPairDataset(Dataset):
         limit: int | None = None,
     ) -> None:
         self.json_path = Path(json_path)
-        with self.json_path.open("r", encoding="utf-8") as file:
-            records = json.load(file)
+        records = read_records(self.json_path, limit=limit)
         if not isinstance(records, list):
             raise ValueError(f"Expected a JSON list in {self.json_path}")
         self.records = records[:limit] if limit is not None else records

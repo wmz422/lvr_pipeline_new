@@ -1,16 +1,4 @@
-"""LightningCLI 入口（= 旧 sft/src/main.py）。
-
-LvrCLI 在原生 LightningCLI 上加「版本号 + 一实验一目录」约定：
-    --exp_name <name>  --version <ver>
-会把本次运行的所有产物（config.yaml / checkpoints / predictions / 日志 / run_meta.json）
-自动嵌套到 runs/{exp_name}/{version}/ ，开箱即复现。
-
-用法：
-    python -m lvr.cli fit  --config configs/base.yaml --config configs/sft/v1.0.0.yaml \
-        --exp_name sft --version v1
-    python -m lvr.cli test --config configs/base.yaml --config configs/eval/test_sft.yaml \
-        --exp_name sft --version v1
-"""
+"""Lightning training entrypoint. Each run stores its resolved configuration under runs/{exp_name}/{version}."""
 
 from __future__ import annotations
 

@@ -1,13 +1,4 @@
-"""latent 与 vision 的 embedding 注入 —— 训练 forward 与推理 generate 共用。
-
-旧 sft 把 vision feature 注入逻辑在训练 `_qwen_forward_from_embeds` 与推理 `generate` prefill
-两处各写一遍（CLAUDE.md §2.B）。这里收敛成 `inject_vision` 一处，二者共用，消灭重复。
-
-- compute_latents：LAM 跑 question+auxiliary 图像对，产出 (B, L, D) latent。
-- inject_latents：把 mapped_latent 写入 input_ids 中 latent_pad 位置的 embedding（训练侧）。
-- mask_latent_labels：latent 位 label 置 -100（不参与 CE）。
-- inject_vision：把 Qwen vision feature 注入 inputs_embeds（训练 & 推理共用）。
-"""
+"""Shared latent and visual embedding injection for training and generation."""
 
 from __future__ import annotations
 

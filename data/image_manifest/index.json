@@ -1,0 +1,54 @@
+{
+  "format": "lvr-json-shards-v1",
+  "records": 730068,
+  "shards": [
+    {
+      "file": "part-00000.json",
+      "records": 91961,
+      "bytes": 24999986,
+      "sha256": "4cd0034dd4f98f7a0492b4edab0bce55efcfee4549777c9a025f3ea09dd0169a"
+    },
+    {
+      "file": "part-00001.json",
+      "records": 91893,
+      "bytes": 24999886,
+      "sha256": "60ca3783467a5319097647cc99aad658771f1b7199a9ea16aa2ae1745c14c04c"
+    },
+    {
+      "file": "part-00002.json",
+      "records": 91980,
+      "bytes": 24999851,
+      "sha256": "8cb4348810584a39c3a74e8cc58dd8b686870fc9c1bc2a7be3e78ebf2593c5af"
+    },
+    {
+      "file": "part-00003.json",
+      "records": 91921,
+      "bytes": 24999831,
+      "sha256": "c8712d75592d6c4b50bfb88589d3448e4f2fafdd2abdf3aa257b2d0ca4148ba8"
+    },
+    {
+      "file": "part-00004.json",
+      "records": 91706,
+      "bytes": 24999766,
+      "sha256": "2926f43fd0386c2f5f91590e30f4ce324c3f109ca5dbf09dc47df89b5462a0b0"
+    },
+    {
+      "file": "part-00005.json",
+      "records": 91808,
+      "bytes": 24999832,
+      "sha256": "a0205d8934902f1e042f472f4fcb5f21bcbf119b9ee416a92f1c9576125d58e8"
+    },
+    {
+      "file": "part-00006.json",
+      "records": 91886,
+      "bytes": 24999858,
+      "sha256": "dec6369343c8f5e3842dbfd1d8b22c463cbff5ccfaf8ead89481d2a1a7c64ae2"
+    },
+    {
+      "file": "part-00007.json",
+      "records": 86913,
+      "bytes": 20016045,
+      "sha256": "efdbf9643d03a3db3a57ad037e6183d86f5fc8f127dd0a4f0ccb2503dad2edbd"
+    }
+  ]
+}

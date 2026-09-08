@@ -72,7 +72,6 @@ class LatentActionModel(nn.Module):
         # Encode
         z = self.encoder(padded_patches)  # (B, T, 1+N, E) [B,2,257,1024]
         # Get latent action for all future frames
-        #breakpoint()
         z = z[:,1:, :self.num_latent]  # (B, T-1, num_latent, E)取出第二帧的a
 
         # VAE
@@ -102,7 +101,6 @@ class LatentActionModel(nn.Module):
     def forward(self, batch: Dict) -> Dict:
         """原始 LAM 训练 forward：编码 latent，并重建后一帧图像。"""
         # Encode + VAE
-        #breakpoint()
         H, W = batch["videos"].shape[2:4]
         outputs = self.encode(batch["videos"])
         video_patches = self.patch_up(outputs["patches"][:, :-1])#只取第一帧的意思

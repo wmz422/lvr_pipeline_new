@@ -1,16 +1,4 @@
-"""benchmark 评估编排入口。
-
-与旧 sft/evaluation/evaluate.py 的关键区别（M6 统一）：
-1. **复用 models 统一加载**：SFT 模型直接构造 `LatentVLM(**base.model, init_checkpoint_path=ckpt)`，
-   走 M4 的 `checkpoint/io.py`（HF分片 / ZeRO / 单pt 三格式），**不再用第二套 model_loader**。
-2. **复用 data 处理单一真源**：推理走 lvr.eval.inference（SFT=path B prompt + cv2 256² 图像，与训练同源）。
-3. **配置分层**：模型/LAM 参数从 `configs/base.yaml` 取（单一真源），benchmark/checkpoint/数据路径放
-   `configs/eval/bench.yaml`，不再整块复制 model 段。
-
-用法:
-    CUDA_VISIBLE_DEVICES=0 python -m lvr.eval.runner \
-        --base-config configs/base.yaml --bench-config configs/eval/bench.yaml
-"""
+"""Evaluate native training checkpoints and optional plain-Qwen baselines. Public bundles use lvr.evaluate."""
 
 from __future__ import annotations
 
@@ -203,12 +191,12 @@ def free_model(model: Any, model_name: str) -> None:
 
 
 def build_infer_fn(model_type: str, processor: Any, gen_cfg: dict[str, Any],
-                   image_size=SFT_IMAGE_SIZE, system: str = ""):
+                   image_size=SFT_IMAGE_SIZE, system: str = "", lam_image_size=SFT_IMAGE_SIZE):
     if model_type == "sft":
         return lambda m, images, q: sft_generate(m, processor, images, q, gen_cfg, image_size, system)
     if model_type == "known_latent":
         return lambda m, images, q: known_latent_generate(
-            m, processor, images, q, gen_cfg, image_size, system
+            m, processor, images, q, gen_cfg, image_size, system, lam_image_size
         )
     return lambda m, images, q: baseline_generate(m, processor, images, q, gen_cfg, image_size, system)
 
@@ -229,7 +217,6 @@ def print_summary(all_results: dict[str, dict[str, Any]]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="LVR benchmark 评估")
-    #breakpoint()
     parser.add_argument("--base-config", default="configs/base.yaml", help="模型/LAM 参数单一真源")
     parser.add_argument("--bench-config", default="configs/eval/bench.yaml", help="benchmark/ckpt/数据路径")
     parser.add_argument("--device", default="cuda:0", help="评估设备")
@@ -282,6 +269,9 @@ def main() -> None:
     sft_image_size = config["sft_image_size"] if "sft_image_size" in config else SFT_IMAGE_SIZE
     eval_system = config.get("system_prompt", "")
     qwen_max_pixels = config.get("qwen_max_pixels")  # 动态分辨率像素上限 cap（须与训练一致；None=Qwen 默认）
+    # Known-latent LAM inputs have their own fixed resize.  Keep legacy configs
+    # at 256 unless they explicitly supply the resolution used for SFT training.
+    lam_image_size = config.get("lam_image_size", SFT_IMAGE_SIZE)
     sft_generation_mode = config.get("sft_generation_mode", "sft")
     preload_checkpoint_path = config.get("preload_checkpoint_path")
 
@@ -304,7 +294,8 @@ def main() -> None:
             preload_checkpoint_path=preload_checkpoint_path,
         )
         infer_fn = build_infer_fn(
-            sft_generation_mode, processor, config["generation"], sft_image_size, eval_system
+            sft_generation_mode, processor, config["generation"], sft_image_size, eval_system,
+            lam_image_size,
         )
         all_results[ckpt["name"]] = run_model_evaluation(
             ckpt["name"], model, processor, infer_fn, config, out_dir_base, use_cache=not args.no_cache

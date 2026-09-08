@@ -1,0 +1,151 @@
+{
+  "01-4000": {
+    "vstar": {
+      "benchmark": "vstar",
+      "total": 191,
+      "correct": 176,
+      "accuracy": 92.14659685863874,
+      "categories": {
+        "direct_attributes": {
+          "total": 115,
+          "correct": 104,
+          "accuracy": 90.43478260869566
+        },
+        "relative_position": {
+          "total": 76,
+          "correct": 72,
+          "accuracy": 94.73684210526315
+        }
+      }
+    },
+    "mmvp": {
+      "benchmark": "mmvp",
+      "total": 300,
+      "correct": 232,
+      "accuracy": 77.33333333333333,
+      "categories": {}
+    },
+    "blink": {
+      "benchmark": "blink",
+      "total": 697,
+      "correct": 385,
+      "accuracy": 55.23672883787661,
+      "categories": {
+        "Counting": {
+          "total": 120,
+          "correct": 65,
+          "accuracy": 54.166666666666664
+        },
+        "IQ_Test": {
+          "total": 150,
+          "correct": 39,
+          "accuracy": 26.0
+        },
+        "Jigsaw": {
+          "total": 150,
+          "correct": 98,
+          "accuracy": 65.33333333333333
+        },
+        "Relative_Reflectance": {
+          "total": 134,
+          "correct": 68,
+          "accuracy": 50.74626865671642
+        },
+        "Spatial_Relation": {
+          "total": 143,
+          "correct": 115,
+          "accuracy": 80.41958041958041
+        }
+      }
+    },
+    "hr_bench_4k": {
+      "benchmark": "hr_bench_4k",
+      "total": 800,
+      "correct": 626,
+      "accuracy": 78.25,
+      "categories": {
+        "single": {
+          "total": 400,
+          "correct": 358,
+          "accuracy": 89.5
+        },
+        "cross": {
+          "total": 400,
+          "correct": 268,
+          "accuracy": 67.0
+        }
+      }
+    },
+    "hr_bench_8k": {
+      "benchmark": "hr_bench_8k",
+      "total": 800,
+      "correct": 596,
+      "accuracy": 74.5,
+      "categories": {
+        "single": {
+          "total": 400,
+          "correct": 343,
+          "accuracy": 85.75
+        },
+        "cross": {
+          "total": 400,
+          "correct": 253,
+          "accuracy": 63.24999999999999
+        }
+      }
+    },
+    "mme_realworld_lite": {
+      "benchmark": "mme_realworld_lite",
+      "total": 1919,
+      "correct": 1024,
+      "accuracy": 53.36112558624283,
+      "categories": {
+        "Perception/Remote Sensing": {
+          "total": 150,
+          "correct": 92,
+          "accuracy": 61.33333333333333
+        },
+        "Perception/Autonomous_Driving": {
+          "total": 350,
+          "correct": 149,
+          "accuracy": 42.57142857142857
+        },
+        "Reasoning/Autonomous_Driving": {
+          "total": 400,
+          "correct": 130,
+          "accuracy": 32.5
+        },
+        "Perception/Diagram and Table": {
+          "total": 100,
+          "correct": 86,
+          "accuracy": 86.0
+        },
+        "Reasoning/Diagram and Table": {
+          "total": 100,
+          "correct": 56,
+          "accuracy": 56.00000000000001
+        },
+        "Perception/Monitoring": {
+          "total": 319,
+          "correct": 144,
+          "accuracy": 45.141065830721004
+        },
+        "Perception/OCR with Complex Context": {
+          "total": 250,
+          "correct": 225,
+          "accuracy": 90.0
+        },
+        "Reasoning/OCR with Complex Context": {
+          "total": 100,
+          "correct": 72,
+          "accuracy": 72.0
+        },
+        "Reasoning/Monitoring": {
+          "total": 150,
+          "correct": 70,
+          "accuracy": 46.666666666666664
+        }
+      }
+    }
+  }
+}

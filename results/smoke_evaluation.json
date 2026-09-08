@@ -1,0 +1,142 @@
+{
+  "scope": "smoke",
+  "limit_per_benchmark": 2,
+  "generation": {
+    "max_new_tokens": 64,
+    "temperature": 0.0,
+    "do_sample": false,
+    "force_latent_end": true
+  },
+  "config": {
+    "checkpoints": [],
+    "plain_checkpoints": [],
+    "sft_generation_mode": "sft",
+    "sft_image_size": null,
+    "system_prompt": "You are a helpful assistant.",
+    "qwen_max_pixels": null,
+    "baseline": {
+      "enabled": false
+    },
+    "generation": {
+      "max_new_tokens": 256,
+      "temperature": 0.0,
+      "do_sample": false,
+      "force_latent_end": true
+    },
+    "benchmarks": [
+      "vstar",
+      "mmvp",
+      "blink",
+      "hr_bench_4k",
+      "hr_bench_8k",
+      "mme_realworld_lite"
+    ],
+    "output_dir": "runs/sft/v1/eval",
+    "data": {
+      "vstar": {
+        "test_jsonl": "benchmark/bench/vstar_bench/test_questions.jsonl",
+        "image_dir": "benchmark/bench/vstar_bench"
+      },
+      "mmvp": {
+        "csv_file": "benchmark/bench/MMVP/Questions.csv",
+        "image_dir": "benchmark/bench/MMVP/MMVP_Images"
+      },
+      "blink": {
+        "dataset_name": "benchmark/bench/BLINK",
+        "configs": [
+          "Counting",
+          "IQ_Test",
+          "Jigsaw",
+          "Relative_Reflectance",
+          "Spatial_Relation"
+        ]
+      },
+      "hr_bench_4k": {
+        "dataset_path": "benchmark/bench/hr_bench_4k",
+        "task_instruction": "\nAnswer with the option's letter from the given choices directly."
+      },
+      "hr_bench_8k": {
+        "dataset_path": "benchmark/bench/hr_bench_8k",
+        "task_instruction": "\nAnswer with the option's letter from the given choices directly."
+      },
+      "mme_realworld_lite": {
+        "dataset_path": "benchmark/bench/mme_realworld_lite",
+        "use_l2_category": false
+      }
+    }
+  },
+  "results": {
+    "vstar": {
+      "benchmark": "vstar",
+      "total": 2,
+      "correct": 2,
+      "accuracy": 100.0,
+      "categories": {
+        "direct_attributes": {
+          "total": 2,
+          "correct": 2,
+          "accuracy": 100.0
+        }
+      }
+    },
+    "mmvp": {
+      "benchmark": "mmvp",
+      "total": 2,
+      "correct": 1,
+      "accuracy": 50.0,
+      "categories": {}
+    },
+    "blink": {
+      "benchmark": "blink",
+      "total": 2,
+      "correct": 1,
+      "accuracy": 50.0,
+      "categories": {
+        "Counting": {
+          "total": 2,
+          "correct": 1,
+          "accuracy": 50.0
+        }
+      }
+    },
+    "hr_bench_4k": {
+      "benchmark": "hr_bench_4k",
+      "total": 2,
+      "correct": 2,
+      "accuracy": 100.0,
+      "categories": {
+        "single": {
+          "total": 2,
+          "correct": 2,
+          "accuracy": 100.0
+        }
+      }
+    },
+    "hr_bench_8k": {
+      "benchmark": "hr_bench_8k",
+      "total": 2,
+      "correct": 2,
+      "accuracy": 100.0,
+      "categories": {
+        "single": {
+          "total": 2,
+          "correct": 2,
+          "accuracy": 100.0
+        }
+      }
+    },
+    "mme_realworld_lite": {
+      "benchmark": "mme_realworld_lite",
+      "total": 2,
+      "correct": 2,
+      "accuracy": 100.0,
+      "categories": {
+        "Perception/Remote Sensing": {
+          "total": 2,
+          "correct": 2,
+          "accuracy": 100.0
+        }
+      }
+    }
+  }
+}

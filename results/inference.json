@@ -1,0 +1,4 @@
+{
+  "question": "Describe the main objects in the image.",
+  "prediction": "<abs_vis_token></abs_vis_token>\ntrees"
+}

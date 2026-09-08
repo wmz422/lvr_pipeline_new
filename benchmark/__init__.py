@@ -1,2 +1,0 @@
-"""Benchmark result visualization utilities."""
-

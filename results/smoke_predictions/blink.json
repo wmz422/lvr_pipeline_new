@@ -1,0 +1,18 @@
+[
+  {
+    "id": "val_Counting_1",
+    "prediction": "<abs_vis_token></abs_vis_token>\nC. 2",
+    "predicted": "C",
+    "label": "D",
+    "correct": false,
+    "category": "Counting"
+  },
+  {
+    "id": "val_Counting_2",
+    "prediction": "<abs_vis_token></abs_vis_token>\nD. 0",
+    "predicted": "D",
+    "label": "D",
+    "correct": true,
+    "category": "Counting"
+  }
+]

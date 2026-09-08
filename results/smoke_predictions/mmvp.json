@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "prediction": "<abs_vis_token></abs_vis_token>\n(b) Closed",
+    "predicted": "B",
+    "label": "A",
+    "correct": false
+  },
+  {
+    "id": 2,
+    "prediction": "<abs_vis_token></abs_vis_token>\n(b) Closed",
+    "predicted": "B",
+    "label": "B",
+    "correct": true
+  }
+]

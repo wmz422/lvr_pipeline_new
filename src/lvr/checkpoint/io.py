@@ -1,13 +1,9 @@
-"""checkpoint 统一加载：HF 分片 / DeepSpeed ZeRO / 单 pt 三格式。
-
-搬自旧 sft/src/model.py 的 _init_checkpoint，**逻辑按原样**（ADR-2：本次不修"先建模再加载"
-的双份显存问题）。用于从 alignment 或上一阶段加载权重（load_state_dict strict=False），
-与 Lightning 原生 ckpt_path（恢复 optimizer/scheduler）不同。
-"""
+"""Load complete safetensors bundles strictly, or initialize stages from native training checkpoints."""
 
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 import torch
 
@@ -16,9 +12,43 @@ def load_init_checkpoint(model, init_checkpoint_path: str) -> None:
     path = Path(init_checkpoint_path).expanduser().resolve()
     state_dict: dict[str, torch.Tensor] = {}
 
-    if path.is_file() and path.suffix in (".pt", ".pth"):
-        # 单文件权重：DeepSpeed zero_to_fp32 合并产物或普通 .pt
-        state_dict = torch.load(str(path), map_location="cpu", weights_only=True)
+    index_file = path / "model.safetensors.index.json"
+    safe_file = path / "model.safetensors"
+    if path.suffix == ".safetensors" and path.is_file():
+        safe_files = [path]
+    elif index_file.is_file():
+        weight_map = json.loads(index_file.read_text())["weight_map"]
+        safe_files = [path / name for name in sorted(set(weight_map.values()))]
+    elif safe_file.is_file():
+        safe_files = [safe_file]
+    else:
+        safe_files = []
+    if safe_files:
+        from safetensors.torch import load_file
+
+        for shard in safe_files:
+            tensors = load_file(shard, device="cpu")
+            duplicate = set(state_dict).intersection(tensors)
+            if duplicate:
+                raise ValueError(f"Duplicate checkpoint keys: {sorted(duplicate)[:3]}")
+            state_dict.update(tensors)
+        if index_file.is_file() and set(state_dict) != set(weight_map):
+            raise ValueError("Safetensors index and shard keys do not match")
+        # Public bundles contain the whole model. Never silently accept missing
+        # frozen modules or a mismatched architecture.
+        torch.nn.Module.load_state_dict(model, state_dict, strict=True)
+        print(f"[checkpoint] Loaded {len(state_dict)} safetensors tensors (strict).", flush=True)
+        return
+
+    if path.is_file() and path.suffix in (".pt", ".pth", ".ckpt"):
+        # 单文件权重：DeepSpeed zero_to_fp32 合并产物、普通 .pt，或 Lightning
+        # ModelCheckpoint 的 .ckpt。后者包含 optimizer 等元数据，模型权重在
+        # ``state_dict`` 字段；这里是阶段间初始化而非 resume，故只取该字段。
+        checkpoint = torch.load(str(path), map_location="cpu", weights_only=True)
+        if isinstance(checkpoint, dict) and isinstance(checkpoint.get("state_dict"), dict):
+            state_dict = checkpoint["state_dict"]
+        else:
+            state_dict = checkpoint
 
     elif path.is_dir():
         # DeepSpeed ZeRO checkpoint: checkpoint/ 子目录下有 zero_pp_rank_* 分片

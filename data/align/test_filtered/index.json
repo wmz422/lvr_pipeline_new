@@ -1,0 +1,12 @@
+{
+  "format": "lvr-json-shards-v1",
+  "records": 1062,
+  "shards": [
+    {
+      "file": "part-00000.json",
+      "records": 1062,
+      "bytes": 631892,
+      "sha256": "1e13a1bed06a35cea0104bd6886809e240e71b2108e744b040e2ee437c0ec6b8"
+    }
+  ]
+}

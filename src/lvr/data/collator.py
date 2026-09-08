@@ -1,15 +1,4 @@
-"""把原始样本整理成 Qwen / LAM 都能消费的 batch。两个 stage 的 collator 共存于此：
-
-- **LatentCollator（SFT）**：Qwen 侧 = question image + question + latent 占位 block + answer；
-  模型**生成** latent block + answer（latent 由模型预测，MSE 监督）。label 监督 latent_block+answer。
-- **AlignmentCollator**：Qwen 侧 = question image + question + latent 占位 block + observation；
-  latent block 在 **prompt 里**（latent 已知，模型不生成 latent），只 CE 监督 observation。
-  另出 shuffle_lam_inputs / no_latent 变体供消融。
-
-两者共用 lvr.data.prompt 的原语（latent_block / lam_inputs / 图像预处理）。
-LAM 侧输入：question image + auxiliary image，用来在线生成 latent。
-（搬自旧 sft/src/dataset.py SftCollator 与 alignment/src/dataset.py AlignmentCollator，逻辑不变。）
-"""
+"""Prepare alignment, latent SFT and plain SFT batches, including LAM image pairs and token supervision."""
 
 from __future__ import annotations
 
@@ -380,6 +369,7 @@ class AlignmentCollator:
         latent_end_token: str = LATENT_END_TOKEN,
         system_prompt: str = "",
         qwen_dynamic_resolution: bool = False,
+        build_shuffle_lam_inputs: bool = True,
     ) -> None:
         if processor is None:
             raise ValueError("AlignmentCollator requires a Qwen-VL processor.")
@@ -399,6 +389,9 @@ class AlignmentCollator:
         # qwen_dynamic_resolution=True：Qwen 那路图不强制 256，原生交给 processor 动态 smart-resize；
         # LAM 那路（build_lam_inputs）始终用 lam_image_size，两路解耦。
         self.qwen_dynamic_resolution = qwen_dynamic_resolution
+        # Shuffled LAM inputs are needed only by latent-ablation generation;
+        # constructing them during ordinary training doubles LAM image I/O.
+        self.build_shuffle_lam_inputs = build_shuffle_lam_inputs
 
     @property
     def latent_block(self) -> str:
@@ -454,10 +447,11 @@ class AlignmentCollator:
             batch["lam_inputs"] = build_lam_inputs(
                 examples, lam_image_processor=self.lam_image_processor,
                 image_root=self.image_root, lam_image_size=self.lam_image_size)
-            batch["shuffle_lam_inputs"] = build_lam_inputs(
-                examples, lam_image_processor=self.lam_image_processor,
-                image_root=self.image_root, lam_image_size=self.lam_image_size,
-                auxiliary_key="shuffle_auxiliary_image")
+            if self.build_shuffle_lam_inputs:
+                batch["shuffle_lam_inputs"] = build_lam_inputs(
+                    examples, lam_image_processor=self.lam_image_processor,
+                    image_root=self.image_root, lam_image_size=self.lam_image_size,
+                    auxiliary_key="shuffle_auxiliary_image")
 
         batch.update(self._metadata(examples, prompt_texts, texts))
         return batch
@@ -529,12 +523,16 @@ class AlignmentCollator:
         prompt_texts: list[str],
         full_texts: list[str],
     ) -> dict[str, Any]:
-        return {
+        metadata = {
             "question_image_paths": [e["question_image"] for e in examples],
             "auxiliary_image_paths": [e["auxiliary_image"] for e in examples],
-            "shuffle_auxiliary_image_paths": [e["shuffle_auxiliary_image"] for e in examples],
             "questions": [e["question"] for e in examples],
             "observations": [e["observation"] for e in examples],
             "prompt_texts": prompt_texts,
             "full_texts": full_texts,
         }
+        if self.build_shuffle_lam_inputs:
+            metadata["shuffle_auxiliary_image_paths"] = [
+                e["shuffle_auxiliary_image"] for e in examples
+            ]
+        return metadata

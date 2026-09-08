@@ -1,0 +1,23 @@
+{
+  "reference_predictions": [
+    {
+      "id": "0",
+      "prediction": "<abs_vis_token></abs_vis_token>\nA"
+    },
+    {
+      "id": "1",
+      "prediction": "<abs_vis_token></abs_vis_token>\nC"
+    }
+  ],
+  "matches": [
+    {
+      "id": "0",
+      "exact": true
+    },
+    {
+      "id": "1",
+      "exact": true
+    }
+  ],
+  "all_exact": true
+}

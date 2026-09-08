@@ -1,4 +1,4 @@
-"""benchmark 抽象基类 + 单模型评估循环。搬自旧 sft/evaluation/benchmarks/base.py，逻辑不变。"""
+"""Shared benchmark evaluation loop and category statistics."""
 
 from __future__ import annotations
 
@@ -49,6 +49,8 @@ class BaseBenchmark(ABC):
         """
         os.makedirs(out_dir, exist_ok=True)
         data = self.load_data()
+        if self.data_config.get("limit") is not None:
+            data = data[:int(self.data_config["limit"])]
         task_instruction = self.get_task_instruction()
 
         results = []

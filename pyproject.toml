@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lvr-pipeline"
+version = "0.1.0"
+description = "Latent visual reasoning with Qwen3-VL and a feature-space latent action model"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "torch>=2.5,<2.6",
+  "torchvision>=0.20,<0.21",
+  "transformers==5.15.0",
+  "lightning==2.6.5",
+  "safetensors==0.8.0",
+  "huggingface-hub>=1.26,<2",
+  "datasets>=5,<6",
+  "jsonargparse[signatures]>=4.51,<5",
+  "accelerate>=1.14,<2",
+  "numpy>=2,<3",
+  "Pillow>=12,<13",
+  "opencv-python>=4.12,<5",
+  "einops>=0.8,<0.9",
+  "PyYAML>=6,<7",
+  "tqdm>=4.60",
+]
+
+[project.optional-dependencies]
+train = ["deepspeed==0.16.4", "tensorboard>=2.18,<3"]
+export = ["deepspeed==0.16.4", "pandas>=3,<4", "pyarrow>=24,<25"]
+
+[project.scripts]
+lvr-infer = "lvr.infer:main"
+lvr-evaluate = "lvr.evaluate:main"
+lvr-train = "lvr.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120

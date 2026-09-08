@@ -1,8 +1,8 @@
 """可训练模块控制。
 
-搬自旧 sft/src/model.py 的 _set_trainable / _unfreeze_module，**行为保持不变**（ADR-2）：
-先 `model.eval()` 全关，再按需 `module.train()` 解冻。注意 Lightning 训练循环启动时会调
-`model.train()` 覆盖这里的 eval —— 这是已知 TODO，本次重构不修，只忠实搬运。
+先 `model.eval()` 全关，再按需 `module.train()` 解冻。`LatentVLM.train()` 会在
+Lightning/DeepSpeed 切换模式后再次强制冻结的 LAM 保持 eval，避免 VAE
+重参数化在下游训练中随机采样。
 """
 
 from __future__ import annotations
@@ -28,7 +28,6 @@ def set_trainable(
     for param in model.parameters():
         param.requires_grad = False
     model.eval()  # 先全部关闭，再按需打开
-    #breakpoint()#确认eval情况，权重加载情况
     if train_qwen_lm:
         _unfreeze_module(model.qwen.model.language_model)
     if train_qwen_lm_head:

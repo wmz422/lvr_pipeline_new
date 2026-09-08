@@ -1,12 +1,4 @@
-"""LatentVLM —— 瘦 LightningModule：组装 Qwen + LAM + projector，定义 forward / loss /
-training-validation step / optimizer / checkpoint hook。
-
-stage-agnostic：Alignment 与 SFT 的差异（可训参数 / loss λ / 数据）全部由 config 决定。
-建模细节下放到 builder / injection / losses / freezing / checkpoint.io。
-generate / test 路径在 M3 接入（本文件先占位）。
-
-搬自旧 sft/src/model.py 的 SftModel，逻辑保持等价（ADR-2：不修已知 bug）。
-"""
+"""Lightning model combining Qwen3-VL, LAM and a latent projector. Stage behavior is selected by configuration."""
 
 from __future__ import annotations
 
@@ -30,6 +22,8 @@ class LatentVLM(pl.LightningModule):
     def __init__(
         self,
         learning_rate: float = 1e-4,
+        latent_projector_learning_rate: float | None = None,
+        qwen_learning_rate: float | None = None,
         qwen_model_name_or_path: str | None = None,
         qwen_torch_dtype: str = "bfloat16",
         add_latent_special_tokens: bool = True,
@@ -43,6 +37,8 @@ class LatentVLM(pl.LightningModule):
         lam_dec_blocks: int = 16,
         lam_num_heads: int = 16,
         lam_num_latent: int = 4,
+        latent_projector_type: str = "linear",
+        latent_projector_mlp_hidden_dim: int | None = None,
         latent_head: bool = False,
         train_qwen_lm: bool = False,
         train_qwen_lm_head: bool = False,
@@ -59,6 +55,7 @@ class LatentVLM(pl.LightningModule):
         generation_max_new_tokens: int = 64,
         generation_output_path: str = "runs/generation/test_predictions.jsonl",
         generation_output_append: bool = False,
+        initialize_from_config: bool = False,
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
@@ -67,7 +64,7 @@ class LatentVLM(pl.LightningModule):
         missing = [
             name for name, value in (
                 ("qwen_model_name_or_path", qwen_model_name_or_path),
-                ("lam_checkpoint_path", lam_checkpoint_path),
+                ("lam_checkpoint_path", lam_checkpoint_path or (initialize_from_config and init_checkpoint_path)),
                 ("lam_vision_model_path", lam_vision_model_path),
             ) if not value
         ]
@@ -81,20 +78,20 @@ class LatentVLM(pl.LightningModule):
         self.latent_pad_token_id: int | None = None
         self.tokenizer = None
 
-        # 多卡时所有 rank 同时从网络 FS 读大文件会造成严重 I/O 竞争；
-        # 按 LOCAL_RANK 错开 60s，让各 rank 顺序加载，避免 NCCL 等待超时。
-        _local_rank = int(os.environ.get("LOCAL_RANK", "0"))
-        if _local_rank > 0:
-            time.sleep(_local_rank * 60)
-        #breakpoint()#确认eval情况，权重加载情况
         self.qwen, self.tokenizer, self.latent_pad_token_id = builder.build_qwen(
             model_name_or_path=qwen_model_name_or_path,
             qwen_torch_dtype=qwen_torch_dtype,
             add_latent_special_tokens=add_latent_special_tokens,
             latent_pad_token=latent_pad_token,
             gradient_checkpointing=qwen_gradient_checkpointing,
+            initialize_from_config=initialize_from_config,
         )
-        self.latent_projector = nn.Linear(lam_latent_dim, builder.qwen_hidden_size(self.qwen))
+        self.latent_projector = builder.build_latent_projector(
+            latent_projector_type,
+            lam_latent_dim,
+            builder.qwen_hidden_size(self.qwen),
+            latent_projector_mlp_hidden_dim,
+        )
         self.lam = builder.build_lam(
             checkpoint_path=lam_checkpoint_path,
             vision_model_path=lam_vision_model_path,
@@ -105,6 +102,7 @@ class LatentVLM(pl.LightningModule):
             dec_blocks=lam_dec_blocks,
             num_heads=lam_num_heads,
             num_latent=lam_num_latent,
+            initialize_from_config=initialize_from_config,
         )
         # TODO(M-latent_head): self.latent_head = ...
         if init_checkpoint_path is not None:
@@ -118,6 +116,18 @@ class LatentVLM(pl.LightningModule):
             train_latent_head=train_latent_head,
             train_lam=train_lam,
         )
+
+    def train(self, mode: bool = True) -> "LatentVLM":
+        """Switch modes while keeping a frozen LAM deterministic.
+
+        Lightning/DeepSpeed calls ``train()`` recursively on the whole module.
+        Without this guard, a frozen VAE-style LAM re-enters training mode and
+        samples ``z_rep`` even though none of its parameters are trainable.
+        """
+        super().train(mode)
+        if self.lam is not None and not bool(self.hparams.train_lam):
+            self.lam.eval()
+        return self
 
     # ---------------- forward / loss ----------------
 
@@ -267,6 +277,7 @@ class LatentVLM(pl.LightningModule):
         top_p: float | None = None,
         top_k: int | None = None,
         do_sample: bool = False,
+        latent_condition: str = "correct",
     ) -> torch.Tensor:
         # alignment 推理模式：latent 作为已知在 prefill 注入，纯文本自回归生成（需 lam_inputs）。
         return generation.generate_align(
@@ -277,6 +288,7 @@ class LatentVLM(pl.LightningModule):
             top_p=top_p,
             top_k=top_k,
             do_sample=do_sample,
+            latent_condition=latent_condition,
         )
 
     def on_test_start(self) -> None:
@@ -342,24 +354,51 @@ class LatentVLM(pl.LightningModule):
     # ---------------- optimizer / dtype / checkpoint ----------------
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
-        trainable_params = [param for param in self.parameters() if param.requires_grad]
-        if not trainable_params:
+        """Create module-specific optimizer groups without duplicating tied weights."""
+        assigned_parameter_ids: set[int] = set()
+        parameter_groups: list[dict[str, Any]] = []
+
+        def add_group(module: nn.Module | None, learning_rate: float) -> None:
+            if module is None:
+                return
+            params = [
+                parameter
+                for parameter in module.parameters()
+                if parameter.requires_grad and id(parameter) not in assigned_parameter_ids
+            ]
+            if not params:
+                return
+            assigned_parameter_ids.update(id(parameter) for parameter in params)
+            parameter_groups.append({"params": params, "lr": learning_rate})
+
+        # Fresh projector weights need larger updates than pretrained Qwen.
+        # Unspecified per-module values preserve the previous single-LR behavior.
+        projector_lr = self.hparams.latent_projector_learning_rate or self.hparams.learning_rate
+        qwen_lr = self.hparams.qwen_learning_rate or self.hparams.learning_rate
+        add_group(self.latent_projector, projector_lr)
+        if self.qwen is not None:
+            add_group(self.qwen.model.language_model, qwen_lr)
+            add_group(self.qwen.lm_head, qwen_lr)
+
+        # Future trainable modules (LAM / latent head) use the base rate.
+        add_group(self, self.hparams.learning_rate)
+        if not parameter_groups:
             raise RuntimeError("No trainable parameters are enabled.")
         optimizer_name = self.hparams.optimizer_name.lower()
         if optimizer_name == "adamw":
             return torch.optim.AdamW(
-                trainable_params, lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay,
+                parameter_groups, lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay,
             )
         if optimizer_name == "deepspeed_cpu_adam":
             from deepspeed.ops.adam import DeepSpeedCPUAdam
 
             return DeepSpeedCPUAdam(
-                trainable_params, lr=self.hparams.learning_rate,
+                parameter_groups, lr=self.hparams.learning_rate,
                 weight_decay=self.hparams.weight_decay, adamw_mode=True,
             )
         if optimizer_name == "sgd":
             return torch.optim.SGD(
-                trainable_params, lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay,
+                parameter_groups, lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay,
             )
         raise ValueError(f"Unsupported optimizer_name: {self.hparams.optimizer_name}")
 
