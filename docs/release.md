@@ -2,6 +2,8 @@
 
 The code, JSON and download scripts are published at [wmz422/lvr_pipeline_new](https://github.com/wmz422/lvr_pipeline_new). The model bundle is published at [Wing22/lvr-sft-v3-4000](https://huggingface.co/Wing22/lvr-sft-v3-4000). Both repositories are public. Model files, source checkpoint directories, images and runtime logs are excluded from GitHub by `.gitignore`.
 
+The alignment step 1000 bundle is separately published at [Wing22/lvr-align-v2-1000](https://huggingface.co/Wing22/lvr-align-v2-1000), also public.
+
 ## Export
 
 Run with an environment containing the `export` extras. The native source checkpoints must be trusted local files.
@@ -15,7 +17,9 @@ python scripts/export_checkpoint.py \
   --output /path/to/hf-model-bundle
 ```
 
-The export includes frozen parameters. BF16 is the default to match the evaluated model's compute dtype. All exported tensors are checked after saving. The independent `lam/lam.ckpt` keeps the original LAM parameter precision and excludes optimizer state. Its parameters are checked against the frozen LAM in the SFT checkpoint after conversion to the selected export dtype.
+The exporter accepts either a DeepSpeed checkpoint directory or a Lightning checkpoint file. The export includes frozen parameters. For trainable-only Lightning checkpoints, it restores the frozen Qwen vision parameters from the recorded base model, the LAM parameters from the supplied LAM checkpoint, and the LM head from the tied token embedding. Missing trainable parameters and incompatible shapes are rejected. BF16 is the default to match the evaluated model's compute dtype. All exported tensors are checked after saving. The independent `lam/lam.ckpt` keeps the original LAM parameter precision and excludes optimizer state. Its parameters are checked against the frozen LAM in the complete bundle after conversion to the selected export dtype.
+
+For alignment, pass `align-000-00001000.ckpt` to `--checkpoint` and the recorded alignment config to `--train-config`; the other arguments are unchanged. The exported directory can be used as `ALIGN_CHECKPOINT_PATH` for `scripts/train_sft.sh`.
 
 ```text
 hf-model-bundle/

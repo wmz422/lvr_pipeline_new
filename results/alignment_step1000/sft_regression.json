@@ -1,0 +1,26 @@
+{
+  "checkpoint": "sft/v3/01-4000.ckpt",
+  "scope": "two VSTAR examples after preserving FP32 rotary buffers",
+  "reference_predictions": [
+    {
+      "id": "0",
+      "prediction": "<abs_vis_token></abs_vis_token>\nA"
+    },
+    {
+      "id": "1",
+      "prediction": "<abs_vis_token></abs_vis_token>\nC"
+    }
+  ],
+  "predictions": [
+    {
+      "id": "0",
+      "prediction": "<abs_vis_token></abs_vis_token>\nA"
+    },
+    {
+      "id": "1",
+      "prediction": "<abs_vis_token></abs_vis_token>\nC"
+    }
+  ],
+  "all_exact": true,
+  "weight_files_changed": false
+}

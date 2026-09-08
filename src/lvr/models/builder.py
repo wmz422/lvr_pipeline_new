@@ -71,12 +71,14 @@ def build_qwen(
 
     返回 (qwen, tokenizer, latent_pad_token_id)。
     """
-    from transformers import AutoConfig, AutoProcessor, Qwen3VLForConditionalGeneration
+    from transformers import AutoConfig, AutoModelForImageTextToText, AutoProcessor, Qwen3VLForConditionalGeneration
 
     dtype = compute_dtype(qwen_torch_dtype)
     if initialize_from_config:
         config = AutoConfig.from_pretrained(model_name_or_path, local_files_only=True)
-        qwen = Qwen3VLForConditionalGeneration(config).to(dtype=dtype)
+        # Initialize at the requested weight dtype while retaining FP32 rotary
+        # buffers, as from_pretrained does. Casting the whole model rounds them.
+        qwen = AutoModelForImageTextToText.from_config(config, dtype=dtype)
     else:
         qwen = Qwen3VLForConditionalGeneration.from_pretrained(
             model_name_or_path, torch_dtype=dtype,

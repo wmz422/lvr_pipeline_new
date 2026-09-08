@@ -1,0 +1,85 @@
+{
+  "source_checkpoint": "align-000-00001000.ckpt",
+  "dtype": "bfloat16",
+  "tensors": 1602,
+  "parameters": 5719974464,
+  "tensor_round_trip": "exact",
+  "lam_round_trip": "exact",
+  "lam_matches_model_at_export_dtype": true,
+  "optimizer_state_included": false,
+  "reconstruction": {
+    "format": "lightning",
+    "epoch": 0,
+    "global_step": 1000,
+    "saved_tensors": 402,
+    "complete_tensors": 1602,
+    "tied_lm_head_restored": true,
+    "restored_frozen_tensors": 1199,
+    "base_files": {
+      "model-00001-of-00002.safetensors": {
+        "bytes": 4967229296,
+        "sha256": "30a01a0556622645a3cce87b655bbbbbc1f170c196099f1b666c93202c3339a9"
+      },
+      "model-00002-of-00002.safetensors": {
+        "bytes": 3908490048,
+        "sha256": "046296a2a387efb43b0c997d5833c789604d168834f6e0d3064bf7bb13d002a6"
+      }
+    }
+  },
+  "source_files": {
+    "align-000-00001000.ckpt": {
+      "bytes": 24147204639,
+      "sha256": "f16d7627230c81f0281236f3065e6277eb49ebf740e92d4d9068b58517f924ca"
+    }
+  },
+  "source_lam": {
+    "filename": "lam-epoch=005-step=00055001-val_loss=0.00000.ckpt",
+    "sha256": "0ea0f55c46566ee91f1802455c6b4c8b45a304ec4af746d89d4d12ca8aef1c41"
+  },
+  "files": {
+    "lam/lam.ckpt": {
+      "bytes": 3567810026,
+      "sha256": "be3414f573c5ff4a1ca69c76cc3fc3ebe626b5d61e3fefeeeb2aa57fbe678781"
+    },
+    "lvr_config.json": {
+      "bytes": 1338,
+      "sha256": "4989d692b6cdaef9942e5d7256135784c851e52351dcdf2f5df291cff1dbaba6"
+    },
+    "model-00001-of-00003.safetensors": {
+      "bytes": 3956568456,
+      "sha256": "f586199341d31bf9d7aa5213b060a3ebf5f3f80a82b5a60802eecafe9645f1f5"
+    },
+    "model-00002-of-00003.safetensors": {
+      "bytes": 3984821720,
+      "sha256": "6e2e428615455fb067937d5f1ced6dc2d0b7ae28ffb75f44a613688cc76849f4"
+    },
+    "model-00003-of-00003.safetensors": {
+      "bytes": 3498759008,
+      "sha256": "4f7cd9ffb3f28a5df84de1c6283d155f683bf59375b3619c6d2fdccb8941176a"
+    },
+    "model.safetensors.index.json": {
+      "bytes": 150077,
+      "sha256": "a571b066ba368189a324cf81dfbafcd05a05c91ab9ca71d2ff9f4b79ae61caef"
+    },
+    "qwen/chat_template.jinja": {
+      "bytes": 5292,
+      "sha256": "3636d0f0bd6bef02654cdffdc447b79cb2cef8ab02cc75267345946291a489e4"
+    },
+    "qwen/config.json": {
+      "bytes": 1538,
+      "sha256": "6d32c11c8eb1d00de300a3ee44e1478c5a37d6913b5e802e28de32d55de186c7"
+    },
+    "qwen/processor_config.json": {
+      "bytes": 1191,
+      "sha256": "d89ef49ce9cd37fbf510158e13c1ef063d9286411c1ec9049932dbe0487143b1"
+    },
+    "qwen/tokenizer.json": {
+      "bytes": 11423231,
+      "sha256": "5c0198fba7a844d992dbb9b73e0c6a613637756f2830d6a024595c7aa2b6596c"
+    },
+    "qwen/tokenizer_config.json": {
+      "bytes": 523,
+      "sha256": "e39a506f420f3db2f8d253aa60fbb2684694f7a385fec5b24b22e559bf6814a7"
+    }
+  }
+}

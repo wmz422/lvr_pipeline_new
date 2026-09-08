@@ -22,7 +22,7 @@ def main():
         if not args.repo_id:
             parser.error("Specify --repo-id for an LVR bundle, or --base for the training base model")
         repo_id, revision = args.repo_id, args.revision or "main"
-        output = args.output or Path("models/lvr-sft-v3-4000")
+        output = args.output or Path("models") / repo_id.rsplit("/", 1)[-1]
     from huggingface_hub import snapshot_download
     snapshot_download(repo_id=repo_id, revision=revision, local_dir=output)
     print(output)

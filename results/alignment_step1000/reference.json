@@ -1,0 +1,23 @@
+{
+  "mode": "known_latent_alignment",
+  "max_new_tokens": 64,
+  "predictions": [
+    {
+      "question_image": "images/original/TreeVGR-RL-37K/10456.jpg",
+      "prediction": "A dark, elongated object with a smooth surface and a slightly curved edge is visible against a blurred background."
+    },
+    {
+      "question_image": "images/original/TreeVGR-RL-37K/14921.jpg",
+      "prediction": "A blurred red object with indistinct details; a dark, out-of-focus shape with faint vertical lines."
+    }
+  ],
+  "tied_lm_head": true,
+  "qwen_rotary_buffer_dtypes": {
+    "model.visual.rotary_pos_emb.inv_freq": "torch.float32",
+    "model.language_model.rotary_emb.inv_freq": "torch.float32",
+    "model.language_model.rotary_emb.original_inv_freq": "torch.float32"
+  },
+  "all_parameters_exact": true,
+  "compared_tensors": 1602,
+  "parameter_mismatches": []
+}
