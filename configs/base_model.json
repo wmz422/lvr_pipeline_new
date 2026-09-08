@@ -1,0 +1,5 @@
+{
+  "repo_id": "Qwen/Qwen3-VL-4B-Instruct",
+  "revision": "ebb281ec70b05090aa6165b016eac8ec08e71b17",
+  "verification": "Matches the recorded training revision and local cached config/weight index."
+}

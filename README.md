@@ -77,6 +77,8 @@ python scripts/download_data.py --stage lam
 训练前准备官方基础模型到 `models/Qwen3-VL-4B-Instruct`，或设置 `QWEN_MODEL_PATH` 指向已有目录：
 
 ```bash
+python scripts/download_model.py --base
+
 # 使用发布的 LAM 权重，从 alignment 开始：
 bash scripts/train_align.sh
 bash scripts/train_sft.sh
@@ -86,6 +88,8 @@ bash scripts/train_lam.sh
 LAM_CHECKPOINT_PATH=/path/to/trained/lam.ckpt bash scripts/train_align.sh
 LAM_CHECKPOINT_PATH=/path/to/trained/lam.ckpt bash scripts/train_sft.sh
 ```
+
+基础模型固定到记录中的 revision `ebb281ec70b05090aa6165b016eac8ec08e71b17`，见 `configs/base_model.json`。
 
 默认记录 4 GPU 设置，alignment 到 step 1000，SFT 到 step 4000。可在命令末尾覆盖 Lightning 参数，例如 `--trainer.devices 2`；调整 GPU 数或累积步数会改变有效 batch size。`PYTHON_BIN`、`DATA_ROOT`（图像根目录）、`JSON_ROOT`（默认本仓库的 `data/`）、`QWEN_MODEL_PATH`、`LAM_CHECKPOINT_PATH` 和 `ALIGN_CHECKPOINT_PATH` 均可由环境变量覆盖。
 
