@@ -4,7 +4,7 @@
 
 本发布版对应 `sft/v3` 的 `01-4000.ckpt`。模型参数以 BF16 safetensors 发布，另提供保留 FP32 参数的独立 LAM checkpoint。推理通过本仓库的 `load_bundle` 加载完整模型；不需要原始 DeepSpeed 分片或额外的基础模型权重下载。
 
-代码、JSON 和下载脚本位于 GitHub；模型包位于独立的 Hugging Face 仓库。模型仓库 ID 在正式上传时确定。
+代码、JSON 和下载脚本位于本 GitHub 仓库；模型权重发布在 [Hugging Face：Wing22/lvr-sft-v3-4000](https://huggingface.co/Wing22/lvr-sft-v3-4000)。
 
 ## 安装
 
@@ -24,10 +24,16 @@ python -m pip install -e '.[train,export]' -c constraints.txt
 
 ## 下载模型与推理
 
-正式发布后，将下面的仓库 ID 替换为模型仓库：
+模型下载：
+
+- [完整模型文件（safetensors 分片、配置和 tokenizer）](https://huggingface.co/Wing22/lvr-sft-v3-4000/tree/main)
+- [独立 LAM checkpoint（FP32，约 3.32 GiB）](https://huggingface.co/Wing22/lvr-sft-v3-4000/resolve/main/lam/lam.ckpt?download=true)
+- [SHA256 校验清单](https://huggingface.co/Wing22/lvr-sft-v3-4000/resolve/main/SHA256SUMS?download=true)
+
+下面的命令下载完整发布包，包括独立 LAM 权重：
 
 ```bash
-python scripts/download_model.py --repo-id YOUR_HF_ACCOUNT/lvr-sft-v3-4000
+python scripts/download_model.py --repo-id Wing22/lvr-sft-v3-4000
 python -m lvr.infer \
   --model-dir models/lvr-sft-v3-4000 \
   --image /path/to/image.jpg \
@@ -109,4 +115,4 @@ benchmark/     benchmark 下载与评测说明
 results/       本次小样本验证和历史汇总
 ```
 
-导出和上传说明见 [发布说明](docs/release.md)。基础模型和第三方数据的来源见 [NOTICE](NOTICE.md)；项目代码和权重许可证由作者在正式发布时确定。
+导出和上传说明见 [发布说明](docs/release.md)。基础模型和第三方数据的来源见 [NOTICE](NOTICE.md)；项目自身代码和导出权重暂未另行指定许可证，第三方内容保留其原有条款。

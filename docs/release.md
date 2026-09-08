@@ -1,6 +1,6 @@
-# Publishing the prepared release
+# Publishing the release
 
-The GitHub payload is this repository. The Hugging Face payload is the separate directory produced by `scripts/export_checkpoint.py`. Model files, source checkpoint directories, images and runtime logs are excluded by `.gitignore`.
+The code, JSON and download scripts are published at [wmz422/lvr_pipeline_new](https://github.com/wmz422/lvr_pipeline_new). The model bundle is published at [Wing22/lvr-sft-v3-4000](https://huggingface.co/Wing22/lvr-sft-v3-4000). Both repositories are public. Model files, source checkpoint directories, images and runtime logs are excluded from GitHub by `.gitignore`.
 
 ## Export
 
@@ -34,14 +34,14 @@ The original 47.42 GiB ZeRO checkpoint remains local. Uploading only its `model_
 
 ## Authentication and upload
 
-Prepare the destination repository IDs, public/private setting and licenses before publication. Log in on the machine instead of adding access tokens to scripts or Git:
+For an authorized update, log in on the machine instead of adding access tokens to scripts or Git:
 
 ```bash
 gh auth login
 hf auth login
-hf upload YOUR_HF_ACCOUNT/lvr-sft-v3-4000 /path/to/hf-model-bundle .
+hf upload Wing22/lvr-sft-v3-4000 /path/to/hf-model-bundle .
 ```
 
-For GitHub, inspect the clean code/data diff and push the prepared release branch to the selected repository. The source project currently has remote `wmz422/lvr_pipeline_new`; its working directory contains unrelated experimental modifications, so publishing should use the prepared directory rather than staging that entire working directory.
+For GitHub, inspect the code/data diff in the prepared release directory and push to `wmz422/lvr_pipeline_new`. The original experiment directory contains unrelated modifications; the publication checkout is separate. The prepared branch is pushed to the repository's default `main` branch without rewriting history.
 
-After publication, replace `YOUR_HF_ACCOUNT/lvr-sft-v3-4000` in the README with the real ID and record the model commit in the download command's `--revision` argument. Add the chosen licenses and preserve upstream notices. The bundle is a custom LVR format, not a native Transformers AutoModel checkpoint.
+The main README links to the model files, standalone LAM checkpoint and checksums, and pins the published model revision in its download command. Preserve upstream notices when updating the release. No separate license has been specified for the author's code or exported weights. The bundle is a custom LVR format, not a native Transformers AutoModel checkpoint.
