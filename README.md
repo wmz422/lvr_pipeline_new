@@ -30,10 +30,11 @@ python -m pip install -e '.[train,export]' -c constraints.txt
 - [独立 LAM checkpoint（FP32，约 3.32 GiB）](https://huggingface.co/Wing22/lvr-sft-v3-4000/resolve/main/lam/lam.ckpt?download=true)
 - [SHA256 校验清单](https://huggingface.co/Wing22/lvr-sft-v3-4000/resolve/main/SHA256SUMS?download=true)
 
-下面的命令下载完整发布包，包括独立 LAM 权重：
+下面的命令下载已验证的完整发布包，包括独立 LAM 权重，并固定到 [模型版本 a41e2cc](https://huggingface.co/Wing22/lvr-sft-v3-4000/tree/a41e2cc1d52e87e5f984312f512bc31abbbfb7bd)：
 
 ```bash
-python scripts/download_model.py --repo-id Wing22/lvr-sft-v3-4000
+python scripts/download_model.py --repo-id Wing22/lvr-sft-v3-4000 \
+  --revision a41e2cc1d52e87e5f984312f512bc31abbbfb7bd
 python -m lvr.infer \
   --model-dir models/lvr-sft-v3-4000 \
   --image /path/to/image.jpg \
