@@ -1,0 +1,26 @@
+# Recorded prediction experiment: Python 3.12, PyTorch CUDA 12.8 wheels.
+# Install torch/torchvision from the official cu128 index before the project.
+torch==2.8.0
+torchvision==0.23.0
+transformers==5.15.0
+lightning==2.6.5
+jsonargparse==4.51.0
+huggingface-hub==1.26.0
+datasets==5.0.1
+numpy==2.5.3
+Pillow==12.3.0
+opencv-python==4.14.0.94
+pandas==3.0.5
+pyarrow==24.0.0
+tensorboard==2.21.0
+matplotlib==3.11.1
+accelerate==1.14.0
+safetensors==0.8.0
+einops==0.8.2
+PyYAML==6.0.3
+openai==2.54.0
+tiktoken==0.14.0
+portalocker==4.3.0
+validators==0.35.0
+rich==15.0.0
+tabulate==0.10.0

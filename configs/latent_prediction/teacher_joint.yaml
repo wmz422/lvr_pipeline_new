@@ -1,0 +1,28 @@
+model:
+  qa_loss_weight: 1.0
+data:
+  batch_size: 4
+trainer:
+  accumulate_grad_batches: 8
+  callbacks:
+  - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+    init_args:
+      filename: best-{epoch:02d}-{step:06d}
+      monitor: val/ce
+      mode: min
+      save_top_k: 1
+      save_last: false
+      save_on_train_epoch_end: false
+      auto_insert_metric_name: false
+  - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+    init_args:
+      filename: epoch-{epoch:02d}-{step:06d}
+      save_top_k: 1
+      save_last: link
+      save_on_train_epoch_end: true
+      auto_insert_metric_name: false
+  - class_path: lightning.pytorch.callbacks.LearningRateMonitor
+    init_args:
+      logging_interval: step
+  - class_path: lvr.training.audit.RunAudit
+version: teacher_joint

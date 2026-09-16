@@ -1,0 +1,89 @@
+seed_everything: 42
+trainer:
+  accelerator: gpu
+  devices: 4
+  precision: bf16-mixed
+  max_epochs: 1
+  max_steps: -1
+  accumulate_grad_batches: 4
+  gradient_clip_val: 1.0
+  log_every_n_steps: 10
+  val_check_interval: 0.5
+  num_sanity_val_steps: 1
+  enable_progress_bar: false
+  strategy:
+    class_path: lightning.pytorch.strategies.DDPStrategy
+    init_args:
+      find_unused_parameters: false
+      gradient_as_bucket_view: true
+  logger:
+  - class_path: lightning.pytorch.loggers.CSVLogger
+    init_args:
+      save_dir: runs
+      name: metrics
+      version: csv
+      flush_logs_every_n_steps: 10
+  - class_path: lightning.pytorch.loggers.TensorBoardLogger
+    init_args:
+      save_dir: runs
+      name: metrics
+      version: tb
+  callbacks:
+  - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+    init_args:
+      filename: best-{epoch:02d}-{step:06d}
+      monitor: val/description_ce
+      mode: min
+      save_top_k: 1
+      save_last: false
+      save_on_train_epoch_end: false
+      auto_insert_metric_name: false
+  - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+    init_args:
+      filename: epoch-{epoch:02d}-{step:06d}
+      save_top_k: 1
+      save_last: link
+      save_on_train_epoch_end: true
+      auto_insert_metric_name: false
+  - class_path: lightning.pytorch.callbacks.LearningRateMonitor
+    init_args:
+      logging_interval: step
+  - class_path: lvr.training.audit.RunAudit
+model:
+  encoder_model_name_or_path: models/Qwen3-VL-4B-Instruct
+  qa_model_name_or_path: models/Qwen3-VL-4B-Instruct
+  num_latents: 8
+  latent_dim: 512
+  learning_rate: 1.0e-05
+  head_learning_rate: 0.0001
+  kl_weight: 0.0
+  kl_warmup_ratio: 0.1
+  lr_warmup_ratio: 0.03
+  gradient_checkpointing: true
+  seed: 42
+  train_qa: true
+  gaussian: false
+  qa_loss_weight: 0.0
+  description_weight: 1.0
+  encoder_uses_question: false
+  encoder_includes_original: true
+  description_image_mode: none
+data:
+  processor_name_or_path: models/Qwen3-VL-4B-Instruct
+  image_root: data
+  batch_size: 8
+  num_workers: 8
+  num_latents: 8
+  original_pixels: 1048576
+  crop_pixels: 262144
+  max_length: 8192
+  seed: 42
+  include_encoder: true
+  qa_crops: false
+  encoder_image_mode: question_crops
+  encoder_includes_original: true
+  include_descriptions: true
+  description_image_mode: none
+  caption_path: data/latent_prediction/captions.jsonl.gz
+exp_name: latent_prediction
+version: teacher_alignment

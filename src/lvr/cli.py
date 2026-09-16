@@ -27,10 +27,11 @@ class LvrCLI(LightningCLI):
         cfg.trainer.default_root_dir = str(run_dir)
 
         # 2. logger save_dir（若配置了 class_path 形式的 logger）
-        logger = getattr(cfg.trainer, "logger", None)
-        init_args = getattr(logger, "init_args", None) if logger is not None else None
-        if init_args is not None and hasattr(init_args, "save_dir"):
-            init_args.save_dir = str(run_dir)
+        loggers = getattr(cfg.trainer, "logger", None)
+        for logger in loggers if isinstance(loggers, list) else [loggers]:
+            init_args = getattr(logger, "init_args", None)
+            if init_args is not None and hasattr(init_args, "save_dir"):
+                init_args.save_dir = str(run_dir)
 
         # 3. ModelCheckpoint dirpath
         callbacks = getattr(cfg.trainer, "callbacks", None) or []

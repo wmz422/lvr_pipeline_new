@@ -1,139 +1,149 @@
-# LVR Pipeline
+# LVR: original + crops → predicted latents
 
-基于 Qwen3-VL-4B-Instruct 的 latent visual reasoning。流程包括 LAM 预训练、Alignment、SFT，以及图像问答和 benchmark 评测。
+This branch reproduces the **2026-09-16 Qwen3-VL-4B latent prediction experiment**. A teacher A encodes the original image and all annotated crops into eight 512-dimensional vectors. Student B predicts those vectors from the original image and question, then consumes its predictions in a second forward pass to answer.
 
-本仓库提供 alignment step 1000 和 SFT step 4000 的完整 BF16 safetensors 权重，另提供保留 FP32 参数的独立 LAM checkpoint。推理通过本仓库的 `load_bundle` 加载完整模型；不需要原始训练 checkpoint 或额外的基础模型权重下载。
+The repository contains the model, training code, exact QA/bbox splits, recorded Description targets, fixed evaluation protocol, and reference results. Paths are configurable; no cluster account or internal workspace is required. The older LAM/alignment/SFT release is documented in [the legacy guide](docs/legacy_lvr.md).
 
-代码、JSON 和下载脚本位于本 GitHub 仓库；模型权重分别发布在下方 Hugging Face 仓库。
+**Weights and images are not stored in Git.** The commands below download the pinned public base model and source images, then train every stage needed to produce the final checkpoint. The September 16 teacher/student checkpoints have not been published as downloadable model artifacts. A user who already has those checkpoints can skip teacher training and override their original paths as shown below. Training again is not a promise of bitwise-identical weights or scores.
 
-| 阶段 | Hugging Face 权重 | 用途 |
-| --- | --- | --- |
-| Alignment v2 · step 1000 | [lvr-align-v2-1000](https://huggingface.co/Wing22/lvr-align-v2-1000) | 已知 latent 的对齐推理、SFT 初始化 |
-| SFT v3 · step 4000 | [lvr-sft-v3-4000](https://huggingface.co/Wing22/lvr-sft-v3-4000) | 图像问答和 benchmark 评测 |
+## 1. Install
 
-## 安装
-
-使用 Python 3.12。先安装适合本机 CUDA 的 PyTorch 2.5.1 / torchvision 0.20.1，然后安装项目：
+Linux, Python **3.12**, CUDA-compatible PyTorch. The recorded experiment used **4 GPUs with 178.35 GiB each**. Joint prediction training peaked at **121.65 GiB allocated / 141.54 GiB reserved per GPU**. Do not assume this recipe fits four 80 GiB cards. Microbatch reduction preserves global batch but may still be insufficient; this release uses DDP, not optimizer/model sharding.
 
 ```bash
-python -m pip install -e . -c constraints.txt
+git clone --branch feat/latent-prediction-repro-20260916 https://github.com/wmz422/lvr_pipeline_new.git
+cd lvr_pipeline_new
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128
+python -m pip install -e '.[prediction]' -c constraints-prediction.txt
+bash scripts/latent_prediction/install_vlmeval.sh
 ```
 
-只有训练或导出原始 DeepSpeed checkpoint 才需要额外依赖：
+VLMEvalKit is pinned to commit `34a64e619d5466ab3a900f1720041ea88d4a1ed6`. Its optional model packages may add installation requirements even though our exact-matching evaluation does not use an API judge. Do not install the legacy `constraints.txt` or DeepSpeed extras for this experiment.
+
+## 2. Prepare the exact inputs
 
 ```bash
-python -m pip install -e '.[train,export]' -c constraints.txt
-```
-
-核心版本见 `constraints.txt`，实际验证环境见 `results/environment.json`。本次使用现有环境离线验证，未重新安装依赖。
-
-## 下载模型与推理
-
-模型下载：
-
-- [完整模型文件（safetensors 分片、配置和 tokenizer）](https://huggingface.co/Wing22/lvr-sft-v3-4000/tree/main)
-- [独立 LAM checkpoint（FP32，约 3.32 GiB）](https://huggingface.co/Wing22/lvr-sft-v3-4000/resolve/main/lam/lam.ckpt?download=true)
-- [SHA256 校验清单](https://huggingface.co/Wing22/lvr-sft-v3-4000/resolve/main/SHA256SUMS?download=true)
-
-下面的命令下载已验证的完整发布包，包括独立 LAM 权重，并固定到 [模型版本 a41e2cc](https://huggingface.co/Wing22/lvr-sft-v3-4000/tree/a41e2cc1d52e87e5f984312f512bc31abbbfb7bd)：
-
-```bash
-python scripts/download_model.py --repo-id Wing22/lvr-sft-v3-4000 \
-  --revision a41e2cc1d52e87e5f984312f512bc31abbbfb7bd
-python -m lvr.infer \
-  --model-dir models/lvr-sft-v3-4000 \
-  --image /path/to/image.jpg \
-  --question 'Describe the main objects in the image.'
-```
-
-也可以直接使用已导出的本地模型目录：
-
-```python
-from lvr.bundle import load_bundle
-model, processor = load_bundle("models/lvr-sft-v3-4000", device="cuda:0")
-```
-
-模型包使用本项目的 `LatentVLM` 结构，并非可以直接交给 `AutoModel.from_pretrained` 的原生 Transformers 模型。`qwen/` 中包含基础结构配置及已注册 latent token 的 tokenizer/processor；主目录的 safetensors 包含完整 Qwen、LAM 和 projector 参数。
-
-Alignment step 1000 的 [全部文件](https://huggingface.co/Wing22/lvr-align-v2-1000/tree/main) 和 [校验清单](https://huggingface.co/Wing22/lvr-align-v2-1000/resolve/main/SHA256SUMS?download=true) 也可单独下载：
-
-```bash
-python scripts/download_model.py --repo-id Wing22/lvr-align-v2-1000 \
-  --revision 1dc7a45d50dc96a48d44d5a6540dcddb53d45fb9 --output models/lvr-align-v2-1000
-```
-
-这是 SFT 前的 alignment 权重。原始 checkpoint 只保存可训练参数；发布包已补齐原始冻结参数并恢复共享的 LM head，包含完整模型，可使用同一 `load_bundle` 加载。它不包含优化器状态。
-
-## Benchmark
-
-```bash
-python scripts/download_benchmarks.py --list
-python scripts/download_benchmarks.py
-python -m lvr.evaluate \
-  --model-dir models/lvr-sft-v3-4000 \
-  --bench-root benchmark/bench \
-  --limit 2 --max-new-tokens 64 \
-  --output-dir runs/smoke
-```
-
-移除 `--limit` 即评测全部样本；正式评测默认 `max_new_tokens=256`。可以用 `--benchmarks vstar mmvp` 选择数据集。评测固定 greedy decoding、4 个 latent 步和 Qwen processor 默认像素预算；完整配置见 `configs/eval.yaml`。
-
-支持 VSTAR、MMVP、BLINK 的 Counting / IQ_Test / Jigsaw / Relative_Reflectance / Spatial_Relation、HR-Bench 4K/8K 和 MME-RealWorld-lite。下载脚本固定来源 commit、文件及校验信息。
-
-**评测范围：** 历史 LAM 预训练数据包含部分 benchmark 图像及辅助框，其中部分框由答案条件生成。因此历史指标不能解释为完全未见测试集上的泛化成绩。MMVP 保留原实现的逐题 accuracy；它不同于要求一对题目同时正确的配对指标。具体来源与计数见 [数据说明](data/README.md)。
-
-## 训练数据与训练入口
-
-仓库只提供 JSON 和图像重建脚本。JSON 中已经保存训练使用的回答、alignment observation 和框，不需要重新调用模型生成标注。
-
-```bash
-python scripts/download_data.py --stage sft --list
-python scripts/download_data.py --stage sft
-# LAM 预训练需要更多原始图像：
-python scripts/download_data.py --stage lam
-```
-
-图像路径均相对 `data/`。`data/*/train`、`data/*/test` 是有序 JSON 分片目录，训练读取器直接接受目录路径并校验分片 SHA256。数据划分和样本顺序保留自记录的实验。
-
-训练前准备官方基础模型到 `models/Qwen3-VL-4B-Instruct`，或设置 `QWEN_MODEL_PATH` 指向已有目录：
-
-```bash
+# Official Qwen revision ebb281ec70b05090aa6165b016eac8ec08e71b17.
 python scripts/download_model.py --base
 
-# 使用发布的 LAM 权重，从 alignment 开始：
-bash scripts/train_align.sh
-bash scripts/train_sft.sh
-
-# 如需从 LAM 预训练开始：
-bash scripts/train_lam.sh
-LAM_CHECKPOINT_PATH=/path/to/trained/lam.ckpt bash scripts/train_align.sh
-LAM_CHECKPOINT_PATH=/path/to/trained/lam.ckpt bash scripts/train_sft.sh
+# Uses the pinned sources in data/sources.json; only originals are needed.
+python scripts/download_data.py --stage sft --originals-only
+python scripts/latent_prediction/prepare.py --check-images
 ```
 
-基础模型固定到记录中的 revision `ebb281ec70b05090aa6165b016eac8ec08e71b17`，见 `configs/base_model.json`。
+The repository supplies **122,896 training + 1,242 validation records**, with aligned QA, boxes and generated descriptions. `data/latent_prediction/captions.jsonl.gz` contains the exact recorded descriptions; its compressed and uncompressed SHA256 values are checked by `prepare.py`. No caption generation service is needed. Boxes are pixel coordinates, and all boxes retain their recorded order. See [data provenance](data/latent_prediction/README.md).
 
-如果已下载上面的 alignment 权重，可以直接用它初始化 SFT：
+Set `HF_HOME` if you want a different Hugging Face cache. Benchmark originals will be downloaded/materialized by the pinned VLMEvalKit under `benchmark/LMUData`, or the directory selected by `LMUData`. Tests use the fixed question IDs in `benchmark/latent_prediction/`; they are subsets of the full upstream benchmarks.
+
+Allow substantial disk space: source image downloads plus several complete checkpoints. The recorded final prediction checkpoint with optimizer state is about **65.9 GiB**, and its warm-up checkpoint about **33 GiB**. Teacher training also saves full checkpoints; reserve several hundred GiB beyond the image datasets.
+
+## 3. Train the full pipeline
+
+Run commands from the repository root. First inspect the resolved recipes without allocating GPUs:
 
 ```bash
-ALIGN_CHECKPOINT_PATH=models/lvr-align-v2-1000 bash scripts/train_sft.sh
+python scripts/latent_prediction/run.py all --dry-run
+
+# Optional: two optimizer steps and validation per stage in runs/latent_prediction/preflight/.
+python scripts/latent_prediction/run.py all --preflight
+
+# All four full stages, followed by the four benchmark conditions.
+python scripts/latent_prediction/run.py all --evaluate
 ```
 
-默认记录 4 GPU 设置，alignment 到 step 1000，SFT 到 step 4000。可在命令末尾覆盖 Lightning 参数，例如 `--trainer.devices 2`；调整 GPU 数或累积步数会改变有效 batch size。`PYTHON_BIN`、`DATA_ROOT`（图像根目录）、`JSON_ROOT`（默认本仓库的 `data/`）、`QWEN_MODEL_PATH`、`LAM_CHECKPOINT_PATH` 和 `ALIGN_CHECKPOINT_PATH` 均可由环境变量覆盖。
+| Stage | Iterations | What is trained | Training loss |
+| --- | ---: | --- | --- |
+| `teacher_alignment` | 961 | A language layers, A queries/head, projector, B language layers | Description CE |
+| `teacher_joint` | 961 | Same components; initialized from teacher alignment | QA CE + Description CE |
+| `warmup` | 200 | New B prediction queries/head only | Relative MSE + cosine |
+| `joint` | 961 | B language layers/LM head + prediction queries/head | Relative MSE + cosine + QA CE + Description CE |
 
-训练入口和配置已经整理，本次没有运行训练，也不承诺重新训练得到逐比特相同的权重。原 checkpoint 有续训历史，精确恢复优化器进度仍需原始 checkpoint；发布的 safetensors 和 LAM 文件只包含模型参数。
+A receives **original + all crops**, without question/answer text. Its vision tower is frozen. B's QA branch receives the original image and question; the Description decoding branch receives only latent vectors and a fixed instruction. Both stages of teacher construction update A and B language parameters. During the two prediction stages, the entire trained A and original latent projector are frozen; B's vision tower/merger remain frozen throughout.
 
-## 验证与目录
-
-SFT step 4000 已完成所有 safetensors 张量回读、独立 LAM 参数回读和推理、单图推理、6 个 benchmark 各 2 条样本，以及 2 条 VSTAR 与原始 checkpoint 的输出对照。Alignment step 1000 的全部 1,602 个参数和 2 条已知 latent 推理输出也与原实现完全一致，并跑通了 2 条 VSTAR 样本。未下载数据、未训练、未重跑全量 benchmark。详见 [验证记录](docs/verification.md)。
+B appends eight learnable queries to its image/question prefix and predicts eight vectors in one causal forward pass. Answer tokens are physically removed from that pass. QA/Description losses backpropagate through the predicted vectors and the frozen projector; predictions are not detached. Warm-up retains the query gradient through frozen B.
 
 ```text
-src/lvr/       模型、训练、推理、评测、数据读取
-src/lam/       LAM 预训练入口
-configs/       alignment、SFT、DeepSpeed、评测配置
-scripts/       下载、训练、导出与验证入口
-data/          训练 JSON、图像来源/框清单、来源版本
-benchmark/     benchmark 下载与评测说明
-results/       本次小样本验证和历史汇总
+teacher = stop_gradient(A(original, all_crops))
+L_mse = mean(mean_d((pred - teacher)^2) / max(mean_d(teacher^2), 1e-6))
+L_cos = mean(1 - cosine(pred, teacher))
+L_joint = L_mse + L_cos + QA_CE + Description_CE
 ```
 
-导出和上传说明见 [发布说明](docs/release.md)。基础模型和第三方数据的来源见 [NOTICE](NOTICE.md)；项目自身代码和导出权重暂未另行指定许可证，第三方内容保留其原有条款。
+Each CE is normalized by its own valid target tokens; every joint-training example supplies both QA and Description. There is **no KD, latent sampling or KL**. Joint QA selects whole teacher/predicted latent groups per sample: 20% predicted in iterations 1–200, 50% in 201–500, 100% in 501–961. Description and alignment always use predictions. The schedule is keyed by seed, optimizer step and sample ID.
+
+All stages use global batch **128**, seed 42, BF16 autocast with FP32 trainable parameters/AdamW states, weight decay 0.01, clipping 1.0, 3% LR warm-up, and cosine decay to 10% of the initial LR. Language LR is `1e-5`, heads/queries/projector LR `1e-4` when trainable. Teacher alignment uses batch 8/GPU × accumulation 4; the other stages use batch 4/GPU × accumulation 8. Original/crop pixel budgets are **1,048,576 / 262,144**, text sequence cap 8,192. Each new phase starts a fresh optimizer/scheduler. Full phase settings are in [configs/latent_prediction](configs/latent_prediction).
+
+Monitor `runs/latent_prediction/<stage>/train.log`, `runtime_rank*.json`, and `metrics/csv/metrics.csv`. A successful phase has `train_exit_code=0` and `checkpoints/last.ckpt`. Intermediate prediction checkpoints are saved at iterations 400/800. Saving a full checkpoint on network storage took several minutes in the recorded run.
+
+### Start from an existing teacher or resume
+
+```bash
+python scripts/latent_prediction/run.py prediction \
+  --source-checkpoint /path/to/original_plus_crops_teacher.ckpt \
+  --base-model /path/to/Qwen3-VL-4B-Instruct \
+  --image-root /path/to/training_images \
+  --output /path/to/run --evaluate
+
+# Repeat the same command and arguments with --resume after an interruption.
+python scripts/latent_prediction/run.py all --resume --evaluate
+```
+
+Completed stages are reused only with the same configuration. An incomplete phase requires `--resume` and a full checkpoint; otherwise use a new output directory. `--gpus` and `--batch-size` recalculate accumulation to keep global batch 128; a different microbatch/device count changes sampler grouping and numerical execution, so it is a resource adaptation rather than the exact recorded recipe. No cluster submission or resource lifecycle commands are embedded in these local scripts.
+
+## 4. Evaluate or predict a single image
+
+```bash
+python scripts/latent_prediction/evaluate.py \
+  --checkpoint runs/latent_prediction/joint/checkpoints/last.ckpt \
+  --source-checkpoint runs/latent_prediction/teacher_joint/checkpoints/last.ckpt
+
+python scripts/latent_prediction/report_latent_prediction.py runs/latent_prediction
+
+python scripts/latent_prediction/infer.py \
+  --checkpoint runs/latent_prediction/joint/checkpoints/last.ckpt \
+  --source-checkpoint runs/latent_prediction/teacher_joint/checkpoints/last.ckpt \
+  --image /path/to/image.jpg --question 'What is written on the sign?' \
+  --save-latents runs/example_latents.pt
+```
+
+Use `--base-model` when moving checkpoints to a machine with a different model directory. The current checkpoint loader needs the source teacher and base architecture for reconstruction, even for predicted inference. The **prediction computation** itself uses only original images and the question; it does not run A or read crop images.
+
+Evaluation uses the same final B for `predicted`, `teacher`, `zero`, and `shuffled`, greedy decoding, at most 256 generated tokens, and exact matching. **Teacher means A's true target latents supplied to the final jointly trained B**, not the previous B checkpoint. Shuffling uses fixed whole-latent donors from the same benchmark, with no self-matches. Recorded sample IDs and donor assignments survive relocation of `LMUData`.
+
+## 5. Recorded results and checks
+
+| Benchmark | Plain SFT | Source A+B | Predicted | Teacher (final B) | Zero | Shuffled |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| VStar (191) | 83.77 | 86.91 | 93.72 | 94.24 | 92.15 | 93.19 |
+| HR4K (772) | 64.90 | 66.71 | 65.16 | 68.65 | 66.45 | 65.80 |
+| HR8K (756) | 59.79 | 62.43 | 61.77 | 64.42 | 61.51 | 60.98 |
+| MME-RealWorld-Lite (1704) | 51.23 | 53.17 | 51.23 | 53.52 | 50.00 | 51.47 |
+| BLINK (239) | 65.69 | 64.44 | 62.76 | 64.02 | 61.92 | 64.02 |
+| All questions, weighted (3662) | 58.52 | 60.43 | 59.31 | 61.77 | 58.82 | 59.45 |
+
+Scores are percentages. The weighted row is a cross-dataset summary, not an official benchmark aggregate. All conditions used matched prompts/IDs/answers, with no empty, failed or truncated generations. Predicted is slightly above plain SFT, but shuffled does not consistently degrade: **this run does not establish that B effectively uses sample-specific predicted latent information**. The final training validation (step 960) reached cosine 0.72006 and relative MSE 0.46457; all benchmark results use step 961.
+
+[Machine-readable reference results](results/latent_prediction_20260916/metrics.json) · [training curves](results/latent_prediction_20260916/training_curves.png) · [release verification](docs/latent_prediction/verification.md)
+
+```bash
+# Small real-Qwen CPU tests; the downloaded processor is used by collation tests.
+python -m unittest discover -s tests -p 'test_*.py' -v
+```
+
+The published models in the legacy guide are **different experiments** and cannot substitute for this teacher. See [NOTICE](NOTICE.md) and [data provenance](data/README.md) for third-party terms and historical benchmark exposure. This new recipe starts from official Qwen and does not load the legacy LAM. The teacher ablation uses curated benchmark boxes (including answer-conditioned annotations for some sources), so its score measures this annotated-input protocol, not a crop-free deployment setting.
+
+## Code layout
+
+```text
+src/lvr/models/{visual_bottleneck,latent_prediction}.py  Teacher and shared-B predictor
+src/lvr/data/crop_qa.py                                Crops, QA and Description collation
+src/lvr/training/audit.py                              Progress/gradient configuration audit
+src/lvr/eval/{vlmeval,latent_prediction}.py             Fixed evaluation adapters
+configs/latent_prediction/                            Four phase recipes
+scripts/latent_prediction/                            Preparation, training, inference, evaluation
+benchmark/latent_prediction/                          Fixed 3,662-question protocol and boxes
+data/latent_prediction/                               Checksummed recorded descriptions
+```

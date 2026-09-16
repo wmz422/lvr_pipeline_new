@@ -1,0 +1,8 @@
+{
+  "records": 124138,
+  "uncompressed_sha256": "7f09098b7835f18cf0248ff5e7af5dfbe5c3665b19e79df0b1e27c764d05f85d",
+  "file": "captions.jsonl.gz",
+  "sha256": "92d4e1d962d11372f3472e9b62544b87d94ef0a20188ae413f55256f21f4e6c4",
+  "uncompressed_bytes": 75290553,
+  "source": "Recorded per-bbox crop descriptions used in all four stages; no regeneration required."
+}

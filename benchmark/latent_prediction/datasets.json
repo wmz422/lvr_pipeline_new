@@ -1,0 +1,44 @@
+{
+  "VStarBench": {
+    "samples": 191,
+    "categories": {
+      "direct_attributes": 115,
+      "relative_position": 76
+    }
+  },
+  "HRBench4K": {
+    "samples": 772,
+    "categories": {
+      "single": 376,
+      "cross": 396
+    }
+  },
+  "HRBench8K": {
+    "samples": 756,
+    "categories": {
+      "single": 364,
+      "cross": 392
+    }
+  },
+  "MME-RealWorld-Lite": {
+    "samples": 1704,
+    "categories": {
+      "Perception/Remote Sensing": 147,
+      "Perception/Autonomous_Driving": 323,
+      "Reasoning/Autonomous_Driving": 319,
+      "Perception/Diagram and Table": 100,
+      "Reasoning/Diagram and Table": 98,
+      "Perception/Monitoring": 265,
+      "Perception/OCR with Complex Context": 247,
+      "Reasoning/OCR with Complex Context": 99,
+      "Reasoning/Monitoring": 106
+    }
+  },
+  "BLINK": {
+    "samples": 239,
+    "categories": {
+      "Counting": 96,
+      "Spatial_Relation": 143
+    }
+  }
+}

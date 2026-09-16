@@ -1,0 +1,34 @@
+{
+  "configs/latent_prediction/warmup.yaml": {
+    "sha256": "05d471f1b868be61adc4c3fe20135caefd3bc0a21ab9503f058c97272daad662",
+    "bytes": 2355
+  },
+  "configs/latent_prediction/joint.yaml": {
+    "sha256": "5e82c27542ed6636b4002173aa0008565f5eb7089e62b3776165b717c9b9e17a",
+    "bytes": 127
+  },
+  "configs/latent_prediction/teacher_alignment.yaml": {
+    "sha256": "c07798ecdab17bc547abf91e71237b2b3c669b69a1226463b46b906a482992f8",
+    "bytes": 2409
+  },
+  "configs/latent_prediction/teacher_joint.yaml": {
+    "sha256": "bc68e3dc2d11df059ff4ffdc62408edaf60a9645935bb30a06e87a0b41a021e2",
+    "bytes": 786
+  },
+  "data/latent_prediction/captions.jsonl.gz": {
+    "sha256": "92d4e1d962d11372f3472e9b62544b87d94ef0a20188ae413f55256f21f4e6c4",
+    "bytes": 17522894
+  },
+  "benchmark/latent_prediction/crop_annotations.json": {
+    "sha256": "d6dc7df9ad699cd30c4434bfefbe4337b982cadfc62827950cee0a0bf0b5d6e9",
+    "bytes": 2861458
+  },
+  "benchmark/latent_prediction/data_config.json": {
+    "sha256": "e807d92eb0e586dc91c3c3f55c8d99e4d4a6920b8fc9fab3f03fb9a2a11f33e0",
+    "bytes": 54496
+  },
+  "benchmark/latent_prediction/datasets.json": {
+    "sha256": "0936953d11f083e91ad8bada52bddc9575243f1bdd0902a1bece01f13cc35b52",
+    "bytes": 923
+  }
+}

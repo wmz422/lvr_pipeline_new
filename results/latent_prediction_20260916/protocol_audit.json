@@ -1,0 +1,7 @@
+{
+  "status": "passed",
+  "samples": 3662,
+  "same_prompts_boxes_indices": true,
+  "same_recorded_ids": true,
+  "same_shuffled_donors": true
+}

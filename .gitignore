@@ -18,3 +18,5 @@ dist/
 /data/raw/
 /data/images/
 /benchmark/bench/
+/benchmark/LMUData/
+/third_party/VLMEvalKit/

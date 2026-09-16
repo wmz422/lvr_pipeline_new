@@ -1,0 +1,548 @@
+{
+  "audit": "passed",
+  "total_questions": 3662,
+  "training": {
+    "warmup": {
+      "steps": 200,
+      "seconds": 1064.7770302295685,
+      "peak_allocated_gib": 36.04335117340088,
+      "peak_reserved_gib": 36.537109375,
+      "validation_optimizer_step": 200,
+      "validation": {
+        "val/ce": 0.6848201155662537,
+        "val/cosine": 0.5930860638618469,
+        "val/description_ce": 1.1493417024612427,
+        "val/latent_loss": 1.0340955257415771,
+        "val/loss": 2.8682572841644287,
+        "val/pred_rms": 0.5371807217597961,
+        "val/pred_slot_std": 0.3248285949230194,
+        "val/predicted_fraction": 1.0,
+        "val/predicted_probability": 1.0,
+        "val/raw_mse": 0.6086568832397461,
+        "val/relative_mse": 0.6271816492080688,
+        "val/teacher_ce": 0.6192657947540283,
+        "val/teacher_rms": 0.9515687227249146,
+        "val/teacher_slot_std": 0.6874404549598694
+      }
+    },
+    "joint": {
+      "steps": 961,
+      "seconds": 9911.22281575203,
+      "peak_allocated_gib": 121.64853715896606,
+      "peak_reserved_gib": 141.544921875,
+      "validation_optimizer_step": 960,
+      "validation": {
+        "val/ce": 0.6638185381889343,
+        "val/cosine": 0.7200593948364258,
+        "val/description_ce": 0.804391086101532,
+        "val/latent_loss": 0.744509220123291,
+        "val/loss": 2.212719202041626,
+        "val/pred_rms": 0.6751293540000916,
+        "val/pred_slot_std": 0.4197844862937927,
+        "val/predicted_fraction": 1.0,
+        "val/predicted_probability": 1.0,
+        "val/raw_mse": 0.45198819041252136,
+        "val/relative_mse": 0.4645687937736511,
+        "val/teacher_ce": 0.635646402835846,
+        "val/teacher_rms": 0.9515687227249146,
+        "val/teacher_slot_std": 0.6874404549598694
+      }
+    }
+  },
+  "results": {
+    "predicted": {
+      "VStarBench": {
+        "samples": 191,
+        "correct_questions": 179,
+        "metrics_percent": {
+          "Overall": 93.717277486911,
+          "direct_attributes": 96.52173913043478,
+          "relative_position": 89.47368421052632
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "HRBench4K": {
+        "samples": 772,
+        "correct_questions": 503,
+        "metrics_percent": {
+          "all": 65.15544041450778,
+          "single": 74.20212765957447,
+          "cross": 56.56565656565656
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "HRBench8K": {
+        "samples": 756,
+        "correct_questions": 467,
+        "metrics_percent": {
+          "all": 61.77248677248678,
+          "single": 64.83516483516483,
+          "cross": 58.928571428571416
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "MME-RealWorld-Lite": {
+        "samples": 1704,
+        "correct_questions": 873,
+        "metrics_percent": {
+          "Overall": 51.232394366197184,
+          "Perception": 53.23475046210721,
+          "Reasoning": 47.7491961414791
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": null
+      },
+      "BLINK": {
+        "samples": 239,
+        "correct_questions": 150,
+        "metrics_percent": {
+          "Overall": 62.76150627615063,
+          "Counting": 44.79166666666667,
+          "Spatial_Relation": 74.82517482517483
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      }
+    },
+    "teacher": {
+      "VStarBench": {
+        "samples": 191,
+        "correct_questions": 180,
+        "metrics_percent": {
+          "Overall": 94.24083769633508,
+          "direct_attributes": 99.1304347826087,
+          "relative_position": 86.8421052631579
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "HRBench4K": {
+        "samples": 772,
+        "correct_questions": 530,
+        "metrics_percent": {
+          "all": 68.65284974093264,
+          "cross": 59.84848484848485,
+          "single": 77.92553191489363
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "HRBench8K": {
+        "samples": 756,
+        "correct_questions": 487,
+        "metrics_percent": {
+          "all": 64.41798941798942,
+          "cross": 59.6938775510204,
+          "single": 69.5054945054945
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "MME-RealWorld-Lite": {
+        "samples": 1704,
+        "correct_questions": 912,
+        "metrics_percent": {
+          "Overall": 53.52112676056338,
+          "Perception": 55.08317929759704,
+          "Reasoning": 50.80385852090033
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": null
+      },
+      "BLINK": {
+        "samples": 239,
+        "correct_questions": 153,
+        "metrics_percent": {
+          "Overall": 64.01673640167364,
+          "Counting": 42.70833333333333,
+          "Spatial_Relation": 78.32167832167832
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      }
+    },
+    "zero": {
+      "VStarBench": {
+        "samples": 191,
+        "correct_questions": 176,
+        "metrics_percent": {
+          "Overall": 92.14659685863874,
+          "direct_attributes": 97.3913043478261,
+          "relative_position": 84.21052631578947
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "HRBench4K": {
+        "samples": 772,
+        "correct_questions": 513,
+        "metrics_percent": {
+          "all": 66.45077720207254,
+          "single": 75.79787234042553,
+          "cross": 57.57575757575758
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "HRBench8K": {
+        "samples": 756,
+        "correct_questions": 465,
+        "metrics_percent": {
+          "all": 61.50793650793651,
+          "single": 64.28571428571428,
+          "cross": 58.92857142857143
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "MME-RealWorld-Lite": {
+        "samples": 1704,
+        "correct_questions": 852,
+        "metrics_percent": {
+          "Overall": 50.0,
+          "Perception": 51.663585951940846,
+          "Reasoning": 47.10610932475884
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": null
+      },
+      "BLINK": {
+        "samples": 239,
+        "correct_questions": 148,
+        "metrics_percent": {
+          "Overall": 61.92468619246861,
+          "Counting": 41.66666666666667,
+          "Spatial_Relation": 75.52447552447552
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      }
+    },
+    "shuffled": {
+      "VStarBench": {
+        "samples": 191,
+        "correct_questions": 178,
+        "metrics_percent": {
+          "Overall": 93.19371727748691,
+          "direct_attributes": 95.65217391304348,
+          "relative_position": 89.47368421052632
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "HRBench4K": {
+        "samples": 772,
+        "correct_questions": 508,
+        "metrics_percent": {
+          "all": 65.80310880829016,
+          "cross": 58.08080808080809,
+          "single": 73.93617021276594
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "HRBench8K": {
+        "samples": 756,
+        "correct_questions": 461,
+        "metrics_percent": {
+          "all": 60.978835978835974,
+          "cross": 58.41836734693877,
+          "single": 63.73626373626373
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "MME-RealWorld-Lite": {
+        "samples": 1704,
+        "correct_questions": 877,
+        "metrics_percent": {
+          "Overall": 51.46713615023474,
+          "Perception": 53.51201478743069,
+          "Reasoning": 47.90996784565916
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": null
+      },
+      "BLINK": {
+        "samples": 239,
+        "correct_questions": 153,
+        "metrics_percent": {
+          "Overall": 64.01673640167364,
+          "Counting": 42.70833333333333,
+          "Spatial_Relation": 78.32167832167832
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      }
+    },
+    "plain_sft": {
+      "VStarBench": {
+        "samples": 191,
+        "correct_questions": 160,
+        "metrics_percent": {
+          "Overall": 83.7696335078534,
+          "direct_attributes": 83.47826086956522,
+          "relative_position": 84.21052631578947
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "HRBench4K": {
+        "samples": 772,
+        "correct_questions": 501,
+        "metrics_percent": {
+          "all": 64.89637305699483,
+          "single": 70.74468085106383,
+          "cross": 59.34343434343434
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "HRBench8K": {
+        "samples": 756,
+        "correct_questions": 452,
+        "metrics_percent": {
+          "all": 59.78835978835979,
+          "single": 61.26373626373627,
+          "cross": 58.41836734693877
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "MME-RealWorld-Lite": {
+        "samples": 1704,
+        "correct_questions": 873,
+        "metrics_percent": {
+          "Overall": 51.232394366197184,
+          "Perception": 54.80591497227357,
+          "Reasoning": 45.01607717041801
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": null
+      },
+      "BLINK": {
+        "samples": 239,
+        "correct_questions": 157,
+        "metrics_percent": {
+          "Overall": 65.69037656903765,
+          "Counting": 51.041666666666664,
+          "Spatial_Relation": 75.52447552447552
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      }
+    },
+    "source_teacher": {
+      "VStarBench": {
+        "samples": 191,
+        "correct_questions": 166,
+        "metrics_percent": {
+          "Overall": 86.91099476439791,
+          "direct_attributes": 95.65217391304348,
+          "relative_position": 73.68421052631578
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "HRBench4K": {
+        "samples": 772,
+        "correct_questions": 515,
+        "metrics_percent": {
+          "all": 66.70984455958549,
+          "single": 75.2659574468085,
+          "cross": 58.58585858585859
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "HRBench8K": {
+        "samples": 756,
+        "correct_questions": 472,
+        "metrics_percent": {
+          "all": 62.43386243386243,
+          "single": 66.20879120879121,
+          "cross": 58.92857142857143
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      },
+      "MME-RealWorld-Lite": {
+        "samples": 1704,
+        "correct_questions": 906,
+        "metrics_percent": {
+          "Overall": 53.16901408450704,
+          "Perception": 55.914972273567464,
+          "Reasoning": 48.39228295819936
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": null
+      },
+      "BLINK": {
+        "samples": 239,
+        "correct_questions": 154,
+        "metrics_percent": {
+          "Overall": 64.43514644351464,
+          "Counting": 42.70833333333333,
+          "Spatial_Relation": 79.02097902097903
+        },
+        "empty_predictions": 0,
+        "generation_failures": 0,
+        "truncated_predictions": 0,
+        "latent_start_outputs": 0,
+        "latent_end_outputs": 0,
+        "unmatched_answers": 0
+      }
+    }
+  },
+  "aggregate_by_question": {
+    "predicted": {
+      "correct": 2172,
+      "samples": 3662,
+      "accuracy_percent": 59.31185144729656
+    },
+    "teacher": {
+      "correct": 2262,
+      "samples": 3662,
+      "accuracy_percent": 61.769524849808846
+    },
+    "zero": {
+      "correct": 2154,
+      "samples": 3662,
+      "accuracy_percent": 58.8203167667941
+    },
+    "shuffled": {
+      "correct": 2177,
+      "samples": 3662,
+      "accuracy_percent": 59.44838885854724
+    },
+    "plain_sft": {
+      "correct": 2143,
+      "samples": 3662,
+      "accuracy_percent": 58.5199344620426
+    },
+    "source_teacher": {
+      "correct": 2213,
+      "samples": 3662,
+      "accuracy_percent": 60.431458219552155
+    }
+  }
+}

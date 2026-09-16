@@ -9,8 +9,8 @@ description = "Latent visual reasoning with Qwen3-VL and a feature-space latent 
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 dependencies = [
-  "torch>=2.5,<2.6",
-  "torchvision>=0.20,<0.21",
+  "torch>=2.5,<2.9",
+  "torchvision>=0.20,<0.24",
   "transformers==5.15.0",
   "lightning==2.6.5",
   "safetensors==0.8.0",
@@ -29,6 +29,7 @@ dependencies = [
 [project.optional-dependencies]
 train = ["deepspeed==0.16.4", "tensorboard>=2.18,<3"]
 export = ["deepspeed==0.16.4", "pandas>=3,<4", "pyarrow>=24,<25"]
+prediction = ["tensorboard>=2.21,<3", "matplotlib>=3.11,<4", "pandas>=3,<4", "pyarrow>=24,<25"]
 
 [project.scripts]
 lvr-infer = "lvr.infer:main"

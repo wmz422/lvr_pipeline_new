@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "cpu_tests": 45,
+  "cpu_test_seconds": 25.803,
+  "caption_records": 124138,
+  "original_image_paths_checked": 124138,
+  "protocol_questions": 3662,
+  "phase_recipe_comparison": "matched recorded non-path hyperparameters for all four stages",
+  "wheel_build": "passed",
+  "wheel_source_comparison": "passed",
+  "full_report_reaudit": "passed",
+  "gpu_training_repeated_during_release": false,
+  "fresh_dependency_install_tested": false
+}

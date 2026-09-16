@@ -3,12 +3,15 @@
 
 import argparse
 from collections import defaultdict
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from io import BytesIO, RawIOBase
 import json
+import os
 import re
 from pathlib import Path
 import shutil
 import tarfile
+import tempfile
 import zipfile
 
 from PIL import Image, ImageDraw
@@ -50,7 +53,20 @@ class JoinedFiles(RawIOBase):
 
 def extract_requested(files, destination, wanted, source):
     destination.mkdir(parents=True, exist_ok=True)
-    remaining = {name for name in wanted if not (destination / name).is_file()}
+    root = destination.resolve()
+    remaining = set(wanted)
+    parents = set()
+    for name in wanted:
+        relative = Path(name)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError(f"Invalid archive path: {name}")
+        parent = destination / relative.parent
+        if parent not in parents:
+            parent.mkdir(parents=True, exist_ok=True)
+            if not parent.resolve().is_relative_to(root):
+                raise ValueError(f"Archive directory escapes destination: {parent}")
+            parents.add(parent)
+
     def match(name):
         if source == "visdrone":
             name = name.replace("/images/", "/")
@@ -60,38 +76,59 @@ def extract_requested(files, destination, wanted, source):
             if candidate in remaining:
                 return candidate
         return None
-    def copy(name, handle):
+
+    def write(name, data, size):
         target = destination / name
-        if not target.resolve().is_relative_to(destination.resolve()):
-            raise ValueError(f"Invalid archive path: {name}")
-        target.parent.mkdir(parents=True, exist_ok=True)
-        with handle, target.open("wb") as output:
-            shutil.copyfileobj(handle, output)
-        remaining.remove(name)
-    if not remaining:
-        return
-    if source == "visual_cot":
-        with JoinedFiles(sorted(files)) as stream, tarfile.open(fileobj=stream, mode="r|*") as archive:
-            for member in archive:
-                name = match(member.name)
-                if member.isfile() and name:
-                    copy(name, archive.extractfile(member))
-                if not remaining:
-                    break
-    else:
-        for path in files:
-            if zipfile.is_zipfile(path):
-                with zipfile.ZipFile(path) as archive:
-                    for member in archive.infolist():
-                        name = match(member.filename)
-                        if not member.is_dir() and name:
-                            copy(name, archive.open(member))
-            else:
-                with tarfile.open(path, "r|*") as archive:
-                    for member in archive:
-                        name = match(member.name)
-                        if member.isfile() and name:
-                            copy(name, archive.extractfile(member))
+        try:
+            if not target.is_symlink() and target.stat().st_size == size:
+                return
+        except FileNotFoundError:
+            pass
+        with tempfile.NamedTemporaryFile(dir=target.parent, prefix=".extract-", delete=False) as output:
+            output.write(data)
+            temporary = output.name
+        os.replace(temporary, target)
+
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        pending = set()
+
+        def copy(name, handle, size):
+            with handle:
+                data = handle.read()
+            if len(data) != size:
+                raise ValueError(f"Truncated archive member: {name}")
+            if len(pending) >= 32:
+                finished, _ = wait(pending, return_when=FIRST_COMPLETED)
+                for future in finished:
+                    future.result()
+                pending.difference_update(finished)
+            pending.add(pool.submit(write, name, data, size))
+            remaining.remove(name)
+
+        if source == "visual_cot":
+            with JoinedFiles(sorted(files)) as stream, tarfile.open(fileobj=stream, mode="r|*") as archive:
+                for member in archive:
+                    name = match(member.name)
+                    if member.isfile() and name:
+                        copy(name, archive.extractfile(member), member.size)
+                    if not remaining:
+                        break
+        else:
+            for path in files:
+                if zipfile.is_zipfile(path):
+                    with zipfile.ZipFile(path) as archive:
+                        for member in archive.infolist():
+                            name = match(member.filename)
+                            if not member.is_dir() and name:
+                                copy(name, archive.open(member), member.file_size)
+                else:
+                    with tarfile.open(path, "r|*") as archive:
+                        for member in archive:
+                            name = match(member.name)
+                            if member.isfile() and name:
+                                copy(name, archive.extractfile(member), member.size)
+        for future in pending:
+            future.result()
     if remaining:
         raise FileNotFoundError(f"{source}: {len(remaining)} originals absent from archive, e.g. {sorted(remaining)[:5]}")
 
@@ -170,6 +207,7 @@ def main():
     parser.add_argument("--data-root", type=Path, default=Path("data"))
     parser.add_argument("--bench-root", type=Path, default=Path("benchmark/bench"))
     parser.add_argument("--list", action="store_true", help="List sources and image counts without downloading")
+    parser.add_argument("--originals-only", action="store_true", help="Skip rendering auxiliary red-box images")
     args = parser.parse_args()
     from lvr.data.records import read_records
     rows = read_records(ROOT / "data/image_manifest")
@@ -189,6 +227,22 @@ def main():
         else:
             files = download_source(source, cache / source)
             extract_requested(files, original_cache, {r["source_path"] for r in records}, source)
+            if args.originals_only:
+                prefixes = set()
+                for row in records:
+                    suffix = row["source_path"]
+                    if not row["question_image"].endswith("/" + suffix):
+                        raise ValueError(f"Original image path does not preserve source path: {row['question_image']}")
+                    prefixes.add(row["question_image"][:-len(suffix)].rstrip("/"))
+                for prefix in prefixes:
+                    target = args.data_root / prefix
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    if not target.exists() and not target.is_symlink():
+                        target.symlink_to(original_cache.resolve(), target_is_directory=True)
+                    elif target.resolve() != original_cache.resolve():
+                        raise FileExistsError(f"Original directory already exists with a different target: {target}")
+                print(f"{source}: {len(records)} originals ready (linked to extracted archive)", flush=True)
+                continue
             prepared = ((row, original_cache / row["source_path"]) for row in records)
         from tqdm import tqdm
         for row, original in tqdm(prepared, total=len(records), desc=source):
@@ -197,7 +251,7 @@ def main():
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(original, target)
             auxiliary = args.data_root / row["auxiliary_image"]
-            if not auxiliary.is_file():
+            if not args.originals_only and not auxiliary.is_file():
                 render_auxiliary(target, auxiliary, row["boxes"])
     print("Image preparation complete." if not args.list else "No downloads performed.")
 

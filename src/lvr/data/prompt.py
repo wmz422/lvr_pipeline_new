@@ -38,12 +38,16 @@ def strip_scaffold_tags(text: str) -> str:
 
 
 def _messages(
-    question: str, system: str, *, num_images: int, with_assistant_sentinel: bool
+    question: str, system: str, *, num_images: int, with_assistant_sentinel: bool,
+    image_labels: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    user_content: list[dict[str, Any]] = [
-        {"type": "image", "image": "placeholder"}  # tokenize=False 下不读图，仅占位
-        for _ in range(num_images)
-    ]
+    if image_labels is not None and len(image_labels) != num_images:
+        raise ValueError("Each image requires exactly one label")
+    user_content: list[dict[str, Any]] = []
+    for index in range(num_images):
+        if image_labels is not None:
+            user_content.append({"type": "text", "text": image_labels[index] + "\n"})
+        user_content.append({"type": "image", "image": "placeholder"})
     user_content.append({"type": "text", "text": question})
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": [{"type": "text", "text": system}]},
@@ -57,7 +61,8 @@ def _messages(
 
 
 def build_generation_prompt(
-    processor: Any, question: str, *, system: str = "", num_images: int = 1
+    processor: Any, question: str, *, system: str = "", num_images: int = 1,
+    image_labels: list[str] | None = None,
 ) -> str:
     """生成 prompt（path B）= 训练时 sentinel 之前的前缀（含 `<|im_start|>assistant\\n`）。
 
@@ -68,7 +73,8 @@ def build_generation_prompt(
     if not hasattr(processor, "apply_chat_template"):
         raise ValueError("processor 必须提供 apply_chat_template。")
     template_text = processor.apply_chat_template(
-        _messages(question, system, num_images=num_images, with_assistant_sentinel=True),
+        _messages(question, system, num_images=num_images, with_assistant_sentinel=True,
+                  image_labels=image_labels),
         tokenize=False,
     )
     template_text = strip_scaffold_tags(template_text)
