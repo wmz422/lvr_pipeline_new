@@ -1,0 +1,162 @@
+{
+  "schema": "qwen25-flow-hardware-launcher-verification-v1",
+  "verified_at_utc": "2026-10-28T14:30:59.301319+00:00",
+  "tested_code_commit": "87b2262a0d57e536d0dc034f9e73941baf300ea6",
+  "entry": "bash train_flow.sh",
+  "status": "passed",
+  "global_batch_size": 128,
+  "epoch_tail_global_batch": 64,
+  "automatic_hardware_tuning": false,
+  "automatic_gpu_trial_training": false,
+  "optional_preflight": "Explicit --preflight only; independent four updates per phase",
+  "defaults": {
+    "global_batch": 128,
+    "epoch_tail_global_batch": 64,
+    "phases": {
+      "teacher_joint": {
+        "gpus": 4,
+        "per_gpu_batch": 8,
+        "accumulation": 4,
+        "global_batch": 128,
+        "zero_stage": 3,
+        "optimizer_device": "cpu",
+        "parameter_device": "cuda",
+        "gradient_scale_reference": 16
+      },
+      "warmup": {
+        "gpus": 4,
+        "per_gpu_batch": 8,
+        "accumulation": 4,
+        "global_batch": 128,
+        "zero_stage": 3,
+        "optimizer_device": "cuda",
+        "parameter_device": "cuda",
+        "gradient_scale_reference": 8
+      },
+      "joint": {
+        "gpus": 4,
+        "per_gpu_batch": 4,
+        "accumulation": 8,
+        "global_batch": 128,
+        "zero_stage": 3,
+        "optimizer_device": "cuda",
+        "parameter_device": "cuda",
+        "gradient_scale_reference": 8
+      }
+    },
+    "eval_gpus": 4,
+    "flow_generator_sub_batch": 2,
+    "automatic_hardware_tuning": false
+  },
+  "manual_hardware_options": [
+    "gpus",
+    "teacher-batch-size",
+    "warmup-batch-size",
+    "joint-batch-size",
+    "zero-stage",
+    "teacher-zero-stage",
+    "warmup-zero-stage",
+    "joint-zero-stage",
+    "teacher-optimizer-device",
+    "warmup-optimizer-device",
+    "joint-optimizer-device",
+    "parameter-offload",
+    "flow-generator-batch-size",
+    "eval-gpus",
+    "cpu-threads"
+  ],
+  "cpu_configuration_matrix": {
+    "training_gpu_counts": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "zero_stages": [
+      2,
+      3
+    ],
+    "optimizer_devices": [
+      "cpu",
+      "cuda"
+    ],
+    "parameter_offload": [
+      "none",
+      "cpu (ZeRO-3 only)"
+    ],
+    "gradient_scale_reference": {
+      "teacher_joint": 16,
+      "warmup": 8,
+      "joint": 8
+    },
+    "default_matches_frozen_running_recipe": true
+  },
+  "regression_tests": {
+    "discovered": 93,
+    "passed": 92,
+    "skipped": 1,
+    "suites": {
+      "packaging_and_hardware": 18,
+      "native_flow_parallel": 4,
+      "flow_training_and_storage": 24,
+      "plain_continuation": 3,
+      "model_and_scoring": 44
+    },
+    "log_sha256": "cffbbf3d9861c9dedfdc2d7cfffa6cae3c990f5610fd00dcd95b06ac796e9bda"
+  },
+  "actual_cpu_pipeline_check": {
+    "status": "passed",
+    "gpu_started": false,
+    "recipe_variants": 12,
+    "hardware": {
+      "gpus": 2,
+      "teacher_batch": 4,
+      "warmup_batch": 8,
+      "joint_batch": 2,
+      "zero_stage": 2
+    },
+    "scope": [
+      "Lightning recipe parsing",
+      "real Qwen processor inputs",
+      "all clean QA IDs matched to GT",
+      "FP32 VAE and offline loaders",
+      "full benchmark evaluation dry-run"
+    ],
+    "report_sha256": "ced889dbfff19d8b47468e5658a0daa56a016a437fb48ae624de6cd845dd9c2e",
+    "loader_probe_world_size": 4
+  },
+  "cold_checkout": {
+    "status": "passed",
+    "scope": "fresh clone; no data, models or .local; invoked from /tmp",
+    "dry_run_cases": [
+      "defaults",
+      "two_gpu",
+      "eight_gpu_zero2",
+      "cpu_parameter_offload",
+      "explicit_preflight",
+      "equals_output",
+      "relative_output"
+    ],
+    "invalid_global_batch_rejected_before_download": true,
+    "data_model_downloads_started": false,
+    "gpu_jobs_started": 0,
+    "report_sha256": "a41d622ce9c47e5a6ebc65227111da7f939ea35dd32be448b05c0239f576e006"
+  },
+  "original_workspace": {
+    "source_files_verified_unchanged": 215,
+    "new_gpu_jobs_started": 0
+  },
+  "not_run": [
+    "Fresh installation of the pinned environments",
+    "New GPU training or multi-GPU ZeRO-2/ZeRO-3 performance comparisons"
+  ],
+  "optimizer_steps": {
+    "teacher_joint": 1346,
+    "warmup": 200,
+    "joint": 1346
+  },
+  "validation": "Per-stage validation, followed by the complete 11-benchmark predicted evaluation and scoring"
+}

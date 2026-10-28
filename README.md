@@ -281,6 +281,7 @@ benchmark 上游路径、revision、SHA256/Git blob hash 在 `manifests/benchmar
 - `paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu/`：当前三阶段实现、离线缓存与测试。
 - `paper_experiments/2026-10-27-qwen25-no-sat-4epoch/script/continuation_runtime.py`：Plain 的尾批与恢复逻辑。
 - `manifests/original_code.json`：整理前来源哈希；`manifests/verification.json`：本次交付的实际验证范围。
+- `manifests/hardware_launcher.json`：一键入口、固定 batch、ZeRO/offload、空仓库预览和最新 CPU 回归验证记录。
 
 整理时不占用训练中的 GPU。CPU 测试与数据/协议校验不能替代新环境上的真实四卡预检，
 也不保证不同 CUDA、硬件或分布式归约顺序下逐位相同。训练运行中的旧目录没有改动。
