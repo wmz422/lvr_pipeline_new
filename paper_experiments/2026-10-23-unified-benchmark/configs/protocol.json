@@ -1,0 +1,51 @@
+{
+  "schema": "paper-benchmark-v1",
+  "version": "2026-10-23",
+  "authoritative": true,
+  "selection": "full_declared_splits",
+  "benchmarks": {
+    "VStarBench": {"split": "test", "records": 191, "generations": 191, "aggregation": "sample_mean"},
+    "HRBench4K": {"split": "full", "records": 800, "generations": 800, "aggregation": "cycle_mean"},
+    "HRBench8K": {"split": "full", "records": 800, "generations": 800, "aggregation": "cycle_mean"},
+    "MME-RealWorld-Lite": {"split": "test", "records": 1919, "generations": 1919, "aggregation": "sample_mean"},
+    "BLINK": {"split": "val", "records": 1901, "generations": 1901, "aggregation": "task_mean"},
+    "MentisOculi": {"split": "test", "records": 1250, "generations": 1250, "aggregation": "task_mean"},
+    "VSP": {"split": "test", "records": 400, "generations": 400, "aggregation": "sample_mean"},
+    "VisuLogic": {"split": "test", "records": 1000, "generations": 1000, "aggregation": "sample_mean"},
+    "MIRA": {"split": "test", "records": 546, "generations": 546, "aggregation": "sample_mean"},
+    "MathVista_testmini": {"split": "testmini", "records": 1000, "generations": 1000, "aggregation": "sample_mean"},
+    "SAT": {"split": "test", "records": 150, "generations": 300, "aggregation": "option_order_mean"}
+  },
+  "total_records": 9957,
+  "total_generations": 10107,
+  "blink_tasks": {"Art_Style": 117, "Counting": 120, "Forensic_Detection": 132, "Functional_Correspondence": 130, "IQ_Test": 150, "Jigsaw": 150, "Multi-view_Reasoning": 133, "Object_Localization": 122, "Relative_Depth": 124, "Relative_Reflectance": 134, "Semantic_Correspondence": 139, "Spatial_Relation": 143, "Visual_Correspondence": 172, "Visual_Similarity": 135},
+  "inference": {
+    "system_prompt": "You are a helpful assistant.",
+    "answer_instruction": "\nReturn only the final answer inside <answer>...</answer>, without an explanation.",
+    "original_pixels": null,
+    "processor": "base_model_defaults",
+    "max_new_tokens": 512,
+    "max_input_tokens": 131072,
+    "do_sample": false,
+    "batch_size": 1,
+    "answer_policy": "strict",
+    "mira_policy": "strict",
+    "on_oom": "fail_without_resizing_or_skipping"
+  },
+  "sat": {
+    "repo_id": "array/SAT-v2",
+    "revision": "77d83da806d0a31f837be7b36d0dfbda230d8864",
+    "option_orders": ["original", "reversed"],
+    "scorer": "strict_label_independent_choice",
+    "reference_scorer_reported_separately": true,
+    "note": "SAT-v2 is the compatible data serialization. Use real test only; exclude synthetic val."
+  },
+  "reporting": {
+    "main_table": "one_row_per_benchmark",
+    "cross_benchmark_average": "macro_mean_of_11_primary_scores",
+    "blink_spatial": "task_breakdown_only",
+    "mathvista_metric": "official_normalization_local_extraction",
+    "overlap_policy": "retain_full_scope_and_disclose_known_overlap",
+    "test_used_for_checkpoint_selection": false
+  }
+}

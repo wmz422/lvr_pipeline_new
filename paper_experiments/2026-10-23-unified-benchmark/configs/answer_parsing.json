@@ -1,0 +1,21 @@
+{
+  "schema": "lvr-answer-parsing-template-v1",
+  "version": "answer-parsing-2026-10-26-v2",
+  "scope": "paper_unified_benchmark",
+  "wrapper_policy": "tag_repair_v1",
+  "mathvista_policy": "numeric_v1",
+  "answer_policy": "format_compat_v1",
+  "mira_policy": "strict",
+  "rules": {
+    "wrapper": "Close one leading <answer> tag only when no other markup occurs. For MIRA, wrap a nonempty bare answer. Never change answer content.",
+    "truncation": "Do not repair wrappers on token-limit outputs; MathVista numeric extraction rejects token-limit outputs.",
+    "mathvista_numeric": "Extract exactly one finite number for free-form integer/float questions. Ignore units, percent/currency signs and valid thousands separators; preserve sign, decimals and scientific notation.",
+    "mathvista_magnitude": "Preserve the stated magnitude: 51.04% becomes 51.04. No unit conversion, arithmetic evaluation or selection among multiple numbers.",
+    "choice": "After strict parsing fails, accept an in-range letter tag, a letter with matching public option text (including numeric-equivalent text), or a unique option text. Reject conflicting letter/text. For image-only label options A/B/C/D, accept one leading explicit label with explanation, without competing answer labels.",
+    "compact_sets": "For letter-set tasks, split a whole uppercase compact payload such as AB into A,B only if every character is a public piece label.",
+    "compact_actions": "For grid/sliding tasks, split a whole UDLR compact payload such as RDD into R,D,D. Preserve action order and repetitions; execute the full normalized sequence with the existing task rules.",
+    "reasoning": "A single final answer block may follow reasoning; never select letters or numbers from intermediate reasoning. Do not extend repair to outputs that reached the token limit.",
+    "other_answers": "Keep MathVista numeric_v1, rotation, action-execution and MIRA content checks. Do not supply missing fields or use reference answers to extract a prediction.",
+    "provenance": "Save original prediction text, wrapper transformation, template version/hash, effective policies and scoring code hashes. Compare models using the same template."
+  }
+}

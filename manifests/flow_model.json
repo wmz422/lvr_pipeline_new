@@ -1,0 +1,46 @@
+{
+  "repo_id": "black-forest-labs/FLUX.2-klein-base-4B",
+  "revision": "a3b4f4849157f664bdbc776fd7453c2783562f4d",
+  "text_encoder_downloaded": false,
+  "components": [
+    "transformer",
+    "vae",
+    "scheduler"
+  ],
+  "files": {
+    "model_index.json": {
+      "bytes": 422,
+      "sha256": "de1fef01845f0af3e1e2f2581cd5e86f2dfa4a4776f7f0b26b4c77feac4ee70f"
+    },
+    "LICENSE.md": {
+      "bytes": 9584,
+      "sha256": "ca02bc51900ab07789d1b70283329e7137f5af98f5161c23a1c81fc38a4af1fe"
+    },
+    "README.md": {
+      "bytes": 10084,
+      "sha256": "728ef6804ff3f38528c24ab9e3d168d579e77d57342c30ea01310eaa70e95016"
+    },
+    "scheduler/scheduler_config.json": {
+      "bytes": 486,
+      "sha256": "067afb012cef64553a763447d1efd93daeffcc0123ca7e25b09f8de20b90762e"
+    },
+    "transformer/config.json": {
+      "bytes": 531,
+      "sha256": "c8a88c1433f24e52c01f46766c9f519e76d91d1c00bfb43fe0db2e4ed3c84d70"
+    },
+    "vae/config.json": {
+      "bytes": 821,
+      "sha256": "0d6dfb69ae95a5e2ac9836284bbb63d8b38ce67b25ba2dff380752b2a10ab948"
+    },
+    "vae/diffusion_pytorch_model.safetensors": {
+      "bytes": 168120878,
+      "sha256": "ca70d2202afe6415bdbcb8793ba8cd99fd159cfe6192381504d6c4d3036e0f04"
+    },
+    "transformer/diffusion_pytorch_model.safetensors": {
+      "bytes": 7751109744,
+      "sha256": "e109674697ffa1a3983126e32512f5428a9442bd8df59f9c95566ee90a473bb6"
+    }
+  },
+  "status": "complete",
+  "verified_unix": 1791951572.298785
+}

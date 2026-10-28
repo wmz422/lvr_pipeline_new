@@ -1,0 +1,85 @@
+seed_everything: 42
+trainer:
+  accelerator: gpu
+  devices: 4
+  precision: bf16-mixed
+  max_epochs: 1
+  max_steps: 1346
+  accumulate_grad_batches: 2
+  gradient_clip_val: 1.0
+  log_every_n_steps: 10
+  val_check_interval: 1.0
+  num_sanity_val_steps: 0
+  enable_progress_bar: false
+  strategy:
+    class_path: lightning.pytorch.strategies.DeepSpeedStrategy
+    init_args:
+      config: ${REPO}/paper_experiments/2026-10-23-qwen25-vl-7b-plain-sft-clean/configs/deepspeed_zero3.json
+      exclude_frozen_parameters: false
+  logger:
+  - class_path: lightning.pytorch.loggers.CSVLogger
+    init_args:
+      save_dir: ${REPO}/paper_experiments/2026-10-27-qwen25-no-sat-4epoch/runs/epoch_01/plain_sft
+      name: metrics
+      version: csv
+      flush_logs_every_n_steps: 10
+  - class_path: lightning.pytorch.loggers.TensorBoardLogger
+    init_args:
+      save_dir: ${REPO}/paper_experiments/2026-10-27-qwen25-no-sat-4epoch/runs/epoch_01/plain_sft
+      name: metrics
+      version: tb
+  callbacks: []
+  limit_train_batches: 1.0
+  default_root_dir: ${REPO}/paper_experiments/2026-10-27-qwen25-no-sat-4epoch/runs/epoch_01/plain_sft
+  use_distributed_sampler: false
+model:
+  encoder_model_name_or_path: ${REPO}/paper_experiments/models/Qwen2.5-VL-7B-Instruct
+  qa_model_name_or_path: ${REPO}/paper_experiments/models/Qwen2.5-VL-7B-Instruct
+  num_latents: 0
+  latent_dim: 512
+  learning_rate: 1.0e-05
+  head_learning_rate: 0.0001
+  kl_weight: 0.0
+  kl_warmup_ratio: 0.1
+  lr_warmup_ratio: 0.03
+  gradient_checkpointing: true
+  seed: 42
+  train_qa: true
+  gaussian: false
+  qa_loss_weight: 1.0
+  description_weight: 0.0
+  encoder_uses_question: false
+  encoder_includes_original: true
+  description_image_mode: none
+  weight_decay: 0.01
+  lr_schedule_steps: 2784
+data:
+  train_path: ${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/sft/train
+  val_path: ${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/sft/test
+  train_boxes_path: ${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/align/train
+  val_boxes_path: ${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/align/test
+  processor_name_or_path: ${REPO}/paper_experiments/models/Qwen2.5-VL-7B-Instruct
+  image_root: ${REPO}/lvr_pipeline_new/data
+  batch_size: 16
+  num_workers: 4
+  num_latents: 0
+  original_pixels: 2000000
+  crop_pixels: 262144
+  max_length: 8192
+  seed: 42
+  include_encoder: false
+  qa_crops: false
+  encoder_image_mode: question_crops
+  encoder_includes_original: true
+  include_descriptions: false
+  description_image_mode: none
+  caption_path: null
+  val_num_workers: 2
+  prefetch_factor: 1
+  pin_memory: false
+  additional_train_path: ${REPO}/paper_experiments/2026-10-26-qwen25-no-sat-ablation/data/reasoning_train_without_sat.json
+  additional_val_path: ${REPO}/lvr_pipeline_new/data/processed/reasoning_v1/val
+  train_length_manifest_path: ${REPO}/paper_experiments/2026-10-26-qwen25-no-sat-ablation/data/plain_qa_lengths.json.gz
+  persistent_workers: true
+exp_name: ${REPO}/paper_experiments/2026-10-27-qwen25-no-sat-4epoch/runs/epoch_01
+version: plain_sft

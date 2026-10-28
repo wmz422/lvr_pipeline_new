@@ -1,0 +1,506 @@
+{
+  "warmup": {
+    "seed_everything": 42,
+    "trainer": {
+      "accelerator": "gpu",
+      "devices": 4,
+      "precision": null,
+      "max_epochs": 1,
+      "max_steps": 200,
+      "accumulate_grad_batches": 4,
+      "gradient_clip_val": 1.0,
+      "log_every_n_steps": 10,
+      "val_check_interval": 1.0,
+      "num_sanity_val_steps": 1,
+      "enable_progress_bar": false,
+      "strategy": {
+        "class_path": "lightning.pytorch.strategies.DeepSpeedStrategy",
+        "init_args": {
+          "config": "${REPO}/paper_experiments/2026-10-23-qwen25-vl-7b-plain-sft-clean/configs/deepspeed_zero3.json",
+          "exclude_frozen_parameters": false
+        }
+      },
+      "logger": [
+        {
+          "class_path": "lightning.pytorch.loggers.CSVLogger",
+          "init_args": {
+            "save_dir": "${OUTPUT}/warmup",
+            "name": "metrics",
+            "version": "csv",
+            "flush_logs_every_n_steps": 10
+          }
+        },
+        {
+          "class_path": "lightning.pytorch.loggers.TensorBoardLogger",
+          "init_args": {
+            "save_dir": "${OUTPUT}/warmup",
+            "name": "metrics",
+            "version": "tb"
+          }
+        }
+      ],
+      "callbacks": [
+        {
+          "class_path": "reconstruction_experiment.runtime.UpdateCheckpoint",
+          "init_args": {
+            "steps": [
+              100,
+              200
+            ],
+            "filename": "candidate-{step:06d}",
+            "save_top_k": -1,
+            "save_last": "link",
+            "auto_insert_metric_name": false,
+            "dirpath": "${OUTPUT}/warmup/checkpoints"
+          }
+        },
+        {
+          "class_path": "reconstruction_experiment.runtime.RecoveryCheckpoint",
+          "init_args": {
+            "filename": "recovery-{step:06d}",
+            "every_n_train_steps": 400,
+            "save_top_k": 1,
+            "save_last": false,
+            "save_on_train_epoch_end": false,
+            "auto_insert_metric_name": false,
+            "dirpath": "${OUTPUT}/warmup/checkpoints"
+          }
+        },
+        {
+          "class_path": "lightning.pytorch.callbacks.LearningRateMonitor",
+          "init_args": {
+            "logging_interval": "step"
+          }
+        },
+        {
+          "class_path": "reconstruction_experiment.runtime.RestoreDataCursor",
+          "init_args": {
+            "steps_per_epoch": 1346
+          }
+        },
+        {
+          "class_path": "reconstruction_experiment.runtime.RunAudit"
+        },
+        {
+          "class_path": "lvr.training.audit.HostMemoryAudit"
+        },
+        {
+          "class_path": "reconstruction_experiment.audit.NoDescriptionAudit"
+        }
+      ],
+      "limit_train_batches": 800,
+      "default_root_dir": "${OUTPUT}/warmup",
+      "use_distributed_sampler": false,
+      "plugins": [
+        {
+          "class_path": "reconstruction_experiment.precision.MatchedDeepSpeedPrecision",
+          "init_args": {
+            "precision": "bf16-mixed",
+            "reference_accumulation": 8
+          }
+        }
+      ]
+    },
+    "model": {
+      "source_checkpoint": "${OUTPUT}/teacher_joint/checkpoints/student_source.ckpt",
+      "base_model_path": "${REPO}/paper_experiments/models/Qwen2.5-VL-7B-Instruct",
+      "prediction_phase": "warmup",
+      "learning_rate": 1e-05,
+      "head_learning_rate": 0.0001,
+      "weight_decay": 0.01,
+      "lr_warmup_ratio": 0.03,
+      "lr_schedule_steps": 200,
+      "latent_weight": 1.0,
+      "cosine_weight": 1.0,
+      "qa_loss_weight": 1.0,
+      "description_weight": 0.0,
+      "energy_floor": 1e-06,
+      "gradient_checkpointing": true,
+      "seed": 42,
+      "num_loops": 1,
+      "allow_question_conditioned_teacher": false
+    },
+    "data": {
+      "train_path": "${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/sft/train",
+      "val_path": "${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/sft/test",
+      "train_boxes_path": "${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/align/train",
+      "val_boxes_path": "${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/align/test",
+      "processor_name_or_path": "${REPO}/paper_experiments/models/Qwen2.5-VL-7B-Instruct",
+      "image_root": "${REPO}/lvr_pipeline_new/data",
+      "batch_size": 8,
+      "num_workers": 4,
+      "num_latents": 8,
+      "original_pixels": 2000000,
+      "crop_pixels": 262144,
+      "max_length": 32768,
+      "seed": 42,
+      "include_encoder": true,
+      "qa_crops": false,
+      "encoder_image_mode": "question_crops",
+      "encoder_includes_original": true,
+      "include_descriptions": false,
+      "description_image_mode": "none",
+      "caption_path": null,
+      "val_num_workers": 2,
+      "prefetch_factor": 1,
+      "pin_memory": true,
+      "additional_train_path": "${REPO}/paper_experiments/2026-10-26-qwen25-no-sat-ablation/data/reasoning_train_without_sat.json",
+      "additional_val_path": "${REPO}/lvr_pipeline_new/data/processed/reasoning_v1/val",
+      "persistent_workers": true,
+      "encoder_uses_question": false,
+      "include_reconstruction": false
+    },
+    "exp_name": "${OUTPUT}",
+    "version": "warmup"
+  },
+  "joint": {
+    "seed_everything": 42,
+    "trainer": {
+      "accelerator": "gpu",
+      "devices": 4,
+      "precision": null,
+      "max_epochs": 1,
+      "max_steps": 1346,
+      "accumulate_grad_batches": 8,
+      "gradient_clip_val": 1.0,
+      "log_every_n_steps": 10,
+      "val_check_interval": 1.0,
+      "num_sanity_val_steps": 1,
+      "enable_progress_bar": false,
+      "strategy": {
+        "class_path": "lightning.pytorch.strategies.DeepSpeedStrategy",
+        "init_args": {
+          "config": "${REPO}/paper_experiments/2026-10-23-qwen25-vl-7b-plain-sft-clean/configs/deepspeed_zero3.json",
+          "exclude_frozen_parameters": false
+        }
+      },
+      "logger": [
+        {
+          "class_path": "lightning.pytorch.loggers.CSVLogger",
+          "init_args": {
+            "save_dir": "${OUTPUT}/joint",
+            "name": "metrics",
+            "version": "csv",
+            "flush_logs_every_n_steps": 10
+          }
+        },
+        {
+          "class_path": "lightning.pytorch.loggers.TensorBoardLogger",
+          "init_args": {
+            "save_dir": "${OUTPUT}/joint",
+            "name": "metrics",
+            "version": "tb"
+          }
+        }
+      ],
+      "callbacks": [
+        {
+          "class_path": "reconstruction_experiment.runtime.UpdateCheckpoint",
+          "init_args": {
+            "steps": [
+              673,
+              1346
+            ],
+            "filename": "candidate-{step:06d}",
+            "save_top_k": -1,
+            "save_last": "link",
+            "auto_insert_metric_name": false,
+            "dirpath": "${OUTPUT}/joint/checkpoints"
+          }
+        },
+        {
+          "class_path": "reconstruction_experiment.runtime.RecoveryCheckpoint",
+          "init_args": {
+            "filename": "recovery-{step:06d}",
+            "every_n_train_steps": 400,
+            "save_top_k": 1,
+            "save_last": false,
+            "save_on_train_epoch_end": false,
+            "auto_insert_metric_name": false,
+            "dirpath": "${OUTPUT}/joint/checkpoints"
+          }
+        },
+        {
+          "class_path": "lightning.pytorch.callbacks.LearningRateMonitor",
+          "init_args": {
+            "logging_interval": "step"
+          }
+        },
+        {
+          "class_path": "reconstruction_experiment.runtime.RestoreDataCursor",
+          "init_args": {
+            "steps_per_epoch": 1346
+          }
+        },
+        {
+          "class_path": "reconstruction_experiment.runtime.RunAudit"
+        },
+        {
+          "class_path": "lvr.training.audit.HostMemoryAudit"
+        },
+        {
+          "class_path": "reconstruction_experiment.audit.NoDescriptionAudit"
+        }
+      ],
+      "limit_train_batches": 1.0,
+      "default_root_dir": "${OUTPUT}/joint",
+      "use_distributed_sampler": false,
+      "plugins": [
+        {
+          "class_path": "reconstruction_experiment.precision.MatchedDeepSpeedPrecision",
+          "init_args": {
+            "precision": "bf16-mixed",
+            "reference_accumulation": 8
+          }
+        }
+      ]
+    },
+    "model": {
+      "source_checkpoint": "${OUTPUT}/teacher_joint/checkpoints/student_source.ckpt",
+      "base_model_path": "${REPO}/paper_experiments/models/Qwen2.5-VL-7B-Instruct",
+      "prediction_phase": "joint",
+      "learning_rate": 1e-05,
+      "head_learning_rate": 0.0001,
+      "weight_decay": 0.01,
+      "lr_warmup_ratio": 0.03,
+      "lr_schedule_steps": 1346,
+      "latent_weight": 1.0,
+      "cosine_weight": 1.0,
+      "qa_loss_weight": 1.0,
+      "description_weight": 0.0,
+      "energy_floor": 1e-06,
+      "gradient_checkpointing": true,
+      "seed": 42,
+      "num_loops": 1,
+      "allow_question_conditioned_teacher": false
+    },
+    "data": {
+      "train_path": "${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/sft/train",
+      "val_path": "${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/sft/test",
+      "train_boxes_path": "${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/align/train",
+      "val_boxes_path": "${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/align/test",
+      "processor_name_or_path": "${REPO}/paper_experiments/models/Qwen2.5-VL-7B-Instruct",
+      "image_root": "${REPO}/lvr_pipeline_new/data",
+      "batch_size": 4,
+      "num_workers": 4,
+      "num_latents": 8,
+      "original_pixels": 2000000,
+      "crop_pixels": 262144,
+      "max_length": 32768,
+      "seed": 42,
+      "include_encoder": true,
+      "qa_crops": false,
+      "encoder_image_mode": "question_crops",
+      "encoder_includes_original": true,
+      "include_descriptions": false,
+      "description_image_mode": "none",
+      "caption_path": null,
+      "val_num_workers": 2,
+      "prefetch_factor": 1,
+      "pin_memory": true,
+      "additional_train_path": "${REPO}/paper_experiments/2026-10-26-qwen25-no-sat-ablation/data/reasoning_train_without_sat.json",
+      "additional_val_path": "${REPO}/lvr_pipeline_new/data/processed/reasoning_v1/val",
+      "persistent_workers": true,
+      "encoder_uses_question": false,
+      "include_reconstruction": false
+    },
+    "exp_name": "${OUTPUT}",
+    "version": "joint",
+    "init_checkpoint": "${OUTPUT}/warmup/checkpoints/last_full.ckpt"
+  },
+  "teacher_joint": {
+    "seed_everything": 42,
+    "trainer": {
+      "accelerator": "gpu",
+      "devices": 4,
+      "precision": null,
+      "max_epochs": 1,
+      "max_steps": 1346,
+      "accumulate_grad_batches": 4,
+      "gradient_clip_val": 1.0,
+      "log_every_n_steps": 10,
+      "val_check_interval": 1.0,
+      "num_sanity_val_steps": 1,
+      "enable_progress_bar": false,
+      "strategy": {
+        "class_path": "lightning.pytorch.strategies.DeepSpeedStrategy",
+        "init_args": {
+          "config": {
+            "zero_force_ds_cpu_optimizer": false,
+            "zero_allow_untested_optimizer": true,
+            "zero_optimization": {
+              "stage": 3,
+              "contiguous_gradients": true,
+              "overlap_comm": true,
+              "allgather_partitions": true,
+              "reduce_scatter": true,
+              "allgather_bucket_size": 50000000,
+              "reduce_bucket_size": 50000000,
+              "stage3_prefetch_bucket_size": 50000000,
+              "stage3_param_persistence_threshold": 100000,
+              "stage3_max_live_parameters": 200000000,
+              "stage3_max_reuse_distance": 200000000,
+              "sub_group_size": 1000000000,
+              "gather_16bit_weights_on_model_save": false,
+              "offload_optimizer": {
+                "device": "cpu",
+                "pin_memory": true
+              }
+            }
+          },
+          "exclude_frozen_parameters": false
+        }
+      },
+      "logger": [
+        {
+          "class_path": "lightning.pytorch.loggers.CSVLogger",
+          "init_args": {
+            "save_dir": "${OUTPUT}/teacher_joint",
+            "name": "metrics",
+            "version": "csv",
+            "flush_logs_every_n_steps": 10
+          }
+        },
+        {
+          "class_path": "lightning.pytorch.loggers.TensorBoardLogger",
+          "init_args": {
+            "save_dir": "${OUTPUT}/teacher_joint",
+            "name": "metrics",
+            "version": "tb"
+          }
+        }
+      ],
+      "callbacks": [
+        {
+          "class_path": "reconstruction_experiment.runtime.UpdateCheckpoint",
+          "init_args": {
+            "steps": [
+              673,
+              1346
+            ],
+            "filename": "candidate-{step:06d}",
+            "save_top_k": -1,
+            "save_last": "link",
+            "auto_insert_metric_name": false,
+            "dirpath": "${OUTPUT}/teacher_joint/checkpoints"
+          }
+        },
+        {
+          "class_path": "reconstruction_experiment.runtime.RecoveryCheckpoint",
+          "init_args": {
+            "filename": "recovery-{step:06d}",
+            "every_n_train_steps": 400,
+            "save_top_k": 1,
+            "save_last": false,
+            "save_on_train_epoch_end": false,
+            "auto_insert_metric_name": false,
+            "dirpath": "${OUTPUT}/teacher_joint/checkpoints"
+          }
+        },
+        {
+          "class_path": "lightning.pytorch.callbacks.LearningRateMonitor",
+          "init_args": {
+            "logging_interval": "step"
+          }
+        },
+        {
+          "class_path": "reconstruction_experiment.runtime.RestoreDataCursor",
+          "init_args": {
+            "steps_per_epoch": 1346
+          }
+        },
+        {
+          "class_path": "reconstruction_experiment.runtime.RunAudit"
+        },
+        {
+          "class_path": "lvr.training.audit.HostMemoryAudit"
+        },
+        {
+          "class_path": "reconstruction_experiment.audit.NoDescriptionAudit"
+        }
+      ],
+      "limit_train_batches": 1.0,
+      "default_root_dir": "${OUTPUT}/teacher_joint",
+      "use_distributed_sampler": false,
+      "plugins": [
+        {
+          "class_path": "reconstruction_experiment.precision.FlowDeepSpeedPrecision",
+          "init_args": {
+            "precision": "bf16-mixed",
+            "reference_accumulation": 16
+          }
+        }
+      ]
+    },
+    "model": {
+      "encoder_model_name_or_path": "${REPO}/paper_experiments/models/Qwen2.5-VL-7B-Instruct",
+      "qa_model_name_or_path": "${REPO}/paper_experiments/models/Qwen2.5-VL-7B-Instruct",
+      "num_latents": 8,
+      "latent_dim": 512,
+      "learning_rate": 1e-05,
+      "head_learning_rate": 0.0001,
+      "kl_weight": 0.0,
+      "kl_warmup_ratio": 0.1,
+      "lr_warmup_ratio": 0.03,
+      "gradient_checkpointing": true,
+      "seed": 42,
+      "train_qa": true,
+      "gaussian": false,
+      "qa_loss_weight": 1.0,
+      "description_weight": 0.0,
+      "encoder_uses_question": false,
+      "encoder_includes_original": true,
+      "description_image_mode": "none",
+      "weight_decay": 0.01,
+      "lr_schedule_steps": 1346,
+      "encoder_type": "qwen",
+      "reconstruction_weight": 0.0,
+      "flow_model_path": "${REPO}/doc/flow_reconstruction_parallel_20261015/weights/FLUX.2-klein-base-4B",
+      "flow_weight": 0.1,
+      "flow_mapper_hidden_size": 1024,
+      "flow_gradient_checkpointing": true,
+      "flow_protocol_sha256": "${GT_PROTOCOL_SHA}",
+      "flow_generator_batch_size": 2,
+      "flow_vae_batch_size": 2,
+      "flow_latent_cache_bytes": 0
+    },
+    "data": {
+      "train_path": "${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/sft/train",
+      "val_path": "${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/sft/test",
+      "train_boxes_path": "${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/align/train",
+      "val_boxes_path": "${REPO}/paper_experiments/datasets/vstar_decontaminated_v1/align/test",
+      "processor_name_or_path": "${REPO}/paper_experiments/models/Qwen2.5-VL-7B-Instruct",
+      "image_root": "${REPO}/lvr_pipeline_new/data",
+      "batch_size": 8,
+      "num_workers": 4,
+      "num_latents": 8,
+      "original_pixels": 2000000,
+      "crop_pixels": 262144,
+      "max_length": 32768,
+      "seed": 42,
+      "include_encoder": true,
+      "qa_crops": false,
+      "encoder_image_mode": "question_crops",
+      "encoder_includes_original": true,
+      "include_descriptions": false,
+      "description_image_mode": "none",
+      "caption_path": null,
+      "val_num_workers": 2,
+      "prefetch_factor": 1,
+      "pin_memory": true,
+      "additional_train_path": "${REPO}/paper_experiments/2026-10-26-qwen25-no-sat-ablation/data/reasoning_train_without_sat.json",
+      "additional_val_path": "${REPO}/lvr_pipeline_new/data/processed/reasoning_v1/val",
+      "persistent_workers": true,
+      "encoder_uses_question": false,
+      "include_reconstruction": false,
+      "flow_data_root": "${REPO}/paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu/data/reconstruction_2mp",
+      "flow_protocol_sha256": "${GT_PROTOCOL_SHA}",
+      "flow_latent_root": "${FLOW_LATENTS}",
+      "flow_vae_model_path": "${REPO}/doc/flow_reconstruction_parallel_20261015/weights/FLUX.2-klein-base-4B",
+      "flow_layout_buckets": true,
+      "flow_stress_first": false
+    },
+    "exp_name": "${OUTPUT}",
+    "version": "teacher_joint"
+  }
+}

@@ -1,0 +1,385 @@
+{
+  "locked_at": "2026-09-29T08:14:02.160617+00:00",
+  "sources": {
+    "zebra_cot": {
+      "repo_id": "multimodal-reasoning-lab/Zebra-CoT",
+      "revision": "f6d1defc169d19180a69f517925ed6cbb06a1c97",
+      "url": "https://huggingface.co/datasets/multimodal-reasoning-lab/Zebra-CoT",
+      "license": "cc-by-nc-4.0",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "bytes": 2505,
+          "git_blob_sha1": "69f08c61721afcc08c31d0bf3fff23b12d09c55d"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00000-of-00026.parquet",
+          "bytes": 465097926,
+          "sha256": "4a8826f9bea3678817a6ab5c32f1ff348a1b62da2629243db8be915f953e30bb"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00001-of-00026.parquet",
+          "bytes": 472083965,
+          "sha256": "df97ca08e9812c0c09ffb915cb16ff878ed256bd007005a0553e02fb3eef0e10"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00002-of-00026.parquet",
+          "bytes": 459678926,
+          "sha256": "bebd5fd878e61e849fe99dd15a4d39a5fdeefb683a1d3a62f18bb3b5e819ad33"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00003-of-00026.parquet",
+          "bytes": 459652781,
+          "sha256": "371ae453d9738546a3ddf79c1ff1f2eb430d6b979cf1173769cd1684f7c5b295"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00004-of-00026.parquet",
+          "bytes": 457192144,
+          "sha256": "089e61fe96a8421d3376e757aa75d8d368dfb26538bba28efcfc252fde3adf11"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00005-of-00026.parquet",
+          "bytes": 462092573,
+          "sha256": "9549bf32c1356f87c5f28ecea699363983b2ebde5ab396ec94e5e0c993daf598"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00006-of-00026.parquet",
+          "bytes": 470827811,
+          "sha256": "06e8363fe6f06fac76c4e7ea558648fb504820ac7efc6da5d8aef4e177250c6b"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00007-of-00026.parquet",
+          "bytes": 463776456,
+          "sha256": "081f993473324a0e49084d74df2aa16191b9278bcae375223b9fe37ad027d295"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00008-of-00026.parquet",
+          "bytes": 456286857,
+          "sha256": "39b743dc64f692d6e9efd08827700c329ec10c0a036e86ddc16705d5db0dbc4a"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00009-of-00026.parquet",
+          "bytes": 453176670,
+          "sha256": "ee93747f4b4f4e0fbffce79945c4fb3487e0018d06c681a598c9b5e8a3406ca9"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00010-of-00026.parquet",
+          "bytes": 474335497,
+          "sha256": "0de9fbb83949cf5c6da28fcd16a63aa6b8fc14ca3fc76250cbf887b2ee5f0b89"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00011-of-00026.parquet",
+          "bytes": 468533169,
+          "sha256": "6e1ad7c8db1a1a43cf4ccd3086b9dd8a9548b451c26e5ac6879577eb4f201343"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00012-of-00026.parquet",
+          "bytes": 456289128,
+          "sha256": "47389212575eebd40545d31dabd94f106f78857b9cb51c8e29172c662b082859"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00013-of-00026.parquet",
+          "bytes": 460015220,
+          "sha256": "e60fa41b605eadbc87d30e5f85d6ba29461b95405ee4cae417ae85442f09e589"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00014-of-00026.parquet",
+          "bytes": 468050976,
+          "sha256": "aee1bc8c1d6d0d8fa300e5a9f3d143f1399ddfe693b3855d9767624dfc0f94be"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00015-of-00026.parquet",
+          "bytes": 464925332,
+          "sha256": "45a3f6467f3fc8a5751ba3eea52d7173d0a0c1cc5307d8449448225d3491a824"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00016-of-00026.parquet",
+          "bytes": 462132024,
+          "sha256": "4dcce326b8ff5de77cd0616a318c32baaa2e0a2afac260b6d96b5c9ea4ab44e2"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00017-of-00026.parquet",
+          "bytes": 467375772,
+          "sha256": "1695155ab83d80239f2067ff51830102805da6729a34ac59653bab0fc11d67ad"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00018-of-00026.parquet",
+          "bytes": 456908351,
+          "sha256": "8e4d1af8aad309589d1e5dbba88e8007b5a859f8e1fe98bd287888ab8e4c712d"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00019-of-00026.parquet",
+          "bytes": 470206378,
+          "sha256": "f23e072861180b9681a11d3ee6d93055ef9a29e36d93db8a1964f171d58c3d3e"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00020-of-00026.parquet",
+          "bytes": 463570207,
+          "sha256": "0e20f2b6a9b263b877f2eabe8f17d07a0cdc7d98b299937a40bf21a47da80466"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00021-of-00026.parquet",
+          "bytes": 467594106,
+          "sha256": "bd0b95b4e6473650c79a527bd7a2048583ba8e56974bc7609a03d6435a551d7c"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00022-of-00026.parquet",
+          "bytes": 463699248,
+          "sha256": "bafcb76139dc088e4ec25a5fc2bb5b361eccb3f0847d34355bf6928706217e48"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00023-of-00026.parquet",
+          "bytes": 465130838,
+          "sha256": "daf42bbac5193e05ae55465f32e5bd40266ae27dc6597326eadec798ba2fe58e"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00024-of-00026.parquet",
+          "bytes": 464407158,
+          "sha256": "732b21948e961ce6875c5266d5af604b4c974c5c61a1492b628e130911d09e59"
+        },
+        {
+          "path": "2D Visual Reasoning - Visual Jigsaw/train-00025-of-00026.parquet",
+          "bytes": 457632248,
+          "sha256": "57a884cfa83d96d2b7ba1fb0edc8d4ce3ac311d7ceb2d274581e7568387b38d4"
+        },
+        {
+          "path": "README.md",
+          "bytes": 21833,
+          "git_blob_sha1": "5beb19dbe640a40a15ab844f455a1e60145fa23a"
+        },
+        {
+          "path": "Scientific Reasoning - Chemistry/train-00000-of-00001.parquet",
+          "bytes": 146028450,
+          "sha256": "f98087ac6609d61793b67ccdd0ed08d85d2b85f2c3ff6e3b415dc93d3f7d6218"
+        },
+        {
+          "path": "Scientific Reasoning - Competitive Programming/train-00000-of-00001.parquet",
+          "bytes": 22819479,
+          "sha256": "0525d524327c6a02e70d72ab6fc475e9205e81b8b5b48fa4c979b1599ec2938b"
+        },
+        {
+          "path": "Scientific Reasoning - Geometry/train-00000-of-00001.parquet",
+          "bytes": 71915579,
+          "sha256": "83d19948af5e20fcfe9c17def565d4328185c83770d35aa145394df22efbf62f"
+        },
+        {
+          "path": "Scientific Reasoning - Graph Algorithms/train-00000-of-00007.parquet",
+          "bytes": 268432216,
+          "sha256": "52285e7b2d332904f8092e5e7c72bb258228e9b17a987e2e2c92de20a4ae7fcf"
+        },
+        {
+          "path": "Scientific Reasoning - Graph Algorithms/train-00001-of-00007.parquet",
+          "bytes": 360447973,
+          "sha256": "e3aa4a91e9b91457781c6bca25c012bdc58ebee6c3ea6b49781284962e9238d4"
+        },
+        {
+          "path": "Scientific Reasoning - Graph Algorithms/train-00002-of-00007.parquet",
+          "bytes": 359780521,
+          "sha256": "a95b37e6805bccfcaeceae856986f5bc5e44d47b33543278eb53d4815a7a2bd1"
+        },
+        {
+          "path": "Scientific Reasoning - Graph Algorithms/train-00003-of-00007.parquet",
+          "bytes": 515022965,
+          "sha256": "c32a503b0ede2a864d4c058db33df58ba975be7931ad37d9cb8462389fcd0c6b"
+        },
+        {
+          "path": "Scientific Reasoning - Graph Algorithms/train-00004-of-00007.parquet",
+          "bytes": 488229827,
+          "sha256": "590b71d3279971c067395524bd0fb8cfbac482d217b8ec0a0bd1dab3582addf1"
+        },
+        {
+          "path": "Scientific Reasoning - Graph Algorithms/train-00005-of-00007.parquet",
+          "bytes": 413751069,
+          "sha256": "a11be7979b39c68433caf82c06f21af3124d31e94ab525c535177466fcc711a7"
+        },
+        {
+          "path": "Scientific Reasoning - Graph Algorithms/train-00006-of-00007.parquet",
+          "bytes": 389363055,
+          "sha256": "7d1f801cde924e8c72eba05d5a94b6fd2e247931a5aed7d4fc5f33121a100fa2"
+        },
+        {
+          "path": "Scientific Reasoning - Physics/train-00000-of-00002.parquet",
+          "bytes": 149410526,
+          "sha256": "8ec813604123e52b54d0240c860d7d63dd5c2e96ed109c233e7f1a3c81d47601"
+        },
+        {
+          "path": "Scientific Reasoning - Physics/train-00001-of-00002.parquet",
+          "bytes": 201220434,
+          "sha256": "b3571932b6d80f0875c20b0eb760a28896f661271737bdc2fce88dd85bcfbf10"
+        }
+      ],
+      "configs": {
+        "2D Visual Reasoning - Visual Jigsaw": {
+          "train": 21899
+        },
+        "Scientific Reasoning - Chemistry": {
+          "train": 4666
+        },
+        "Scientific Reasoning - Competitive Programming": {
+          "train": 1207
+        },
+        "Scientific Reasoning - Geometry": {
+          "train": 1058
+        },
+        "Scientific Reasoning - Graph Algorithms": {
+          "train": 10000
+        },
+        "Scientific Reasoning - Physics": {
+          "train": 7090
+        }
+      },
+      "raw_directory": "data/raw/Zebra-CoT"
+    },
+    "mathvision": {
+      "repo_id": "MathLLMs/MathVision",
+      "revision": "2837ddb3f13abaf6b3997c12d80753e5470bd46a",
+      "url": "https://huggingface.co/datasets/MathLLMs/MathVision",
+      "license": "mit",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "bytes": 2307,
+          "git_blob_sha1": "28df5f900b358436f0267334b3e3e9af33f917ba"
+        },
+        {
+          "path": "README.md",
+          "bytes": 11982,
+          "git_blob_sha1": "c27906ec2b68e8fc2e2bf0dcb0bce4bc3a28dfad"
+        },
+        {
+          "path": "data/test-00000-of-00001-3532b8d3f1b4047a.parquet",
+          "bytes": 56906090,
+          "sha256": "bcb3078a77bd6ee0e4e22135d53b9a48604fcd1b62dec69e279e812ba4dd7d37"
+        },
+        {
+          "path": "data/testmini-00000-of-00001-f8ff70fcb2f29b1d.parquet",
+          "bytes": 6987282,
+          "sha256": "303b551466029f694b201ed61d9115bc9cff370006e8908cbe85c0495e79e76d"
+        },
+        {
+          "path": "eval.yaml",
+          "bytes": 1741,
+          "git_blob_sha1": "b5c4771162b92102ea19849c5779e2de26769e5a"
+        },
+        {
+          "path": "images.zip",
+          "bytes": 52394949,
+          "sha256": "d571d5178c14e7a713c52c0131aa7be9e20bf6498e7fb3dbd400abb673c07e1f"
+        }
+      ],
+      "splits": {
+        "test": 3040,
+        "testmini": 304
+      },
+      "raw_directory": "benchmark/bench/_raw/mathvision",
+      "prepared_directory": "benchmark/bench/mathvision"
+    },
+    "mathvista": {
+      "repo_id": "AI4Math/MathVista",
+      "revision": "2b6ad69445fbb5695c9b165475e8decdbeb97747",
+      "url": "https://huggingface.co/datasets/AI4Math/MathVista",
+      "license": "cc-by-sa-4.0",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "bytes": 2307,
+          "git_blob_sha1": "28df5f900b358436f0267334b3e3e9af33f917ba"
+        },
+        {
+          "path": "README.md",
+          "bytes": 11600,
+          "git_blob_sha1": "3fa1a05f0b4c20392be00d22abd3a8b7d0fb51e2"
+        },
+        {
+          "path": "annot_testmini.json",
+          "bytes": 2127193,
+          "git_blob_sha1": "759f97f06deaf1dad8343daff7d8e1baa897e389"
+        },
+        {
+          "path": "data/test-00000-of-00002-6b81bd7f7e2065e6.parquet",
+          "bytes": 357852357,
+          "sha256": "4212a3a9cbbaa08f314e0a3ca88421562caf97c95144dcf9e79fba0dd204e94d"
+        },
+        {
+          "path": "data/test-00001-of-00002-6a611c71596db30f.parquet",
+          "bytes": 386399007,
+          "sha256": "039934fda97bf910613c885ca13d3562d73c4a5a99f6100b5a230d6329de9e7a"
+        },
+        {
+          "path": "data/testmini-00000-of-00001-725687bf7a18d64b.parquet",
+          "bytes": 141568126,
+          "sha256": "373f6c0b412a9be2cec36711cee724e03f4c5db6908f3c13db903aa9694d4f2d"
+        },
+        {
+          "path": "images.zip",
+          "bytes": 866114727,
+          "sha256": "967b506d6867910f49c4bd7a54b5502b76b2b07e17efffce437f114d41eb09bc"
+        },
+        {
+          "path": "source.json",
+          "bytes": 13497,
+          "git_blob_sha1": "c5751ca5f54f437f40815fdaa319c486c1f55c55"
+        }
+      ],
+      "splits": {
+        "testmini": 1000,
+        "test": 5141
+      },
+      "raw_directory": "benchmark/bench/_raw/mathvista",
+      "prepared_directory": "benchmark/bench/mathvista"
+    },
+    "visulogic": {
+      "repo_id": "VisuLogic/VisuLogic",
+      "revision": "3e483f8cca0bc766ecc5f70299f2b8a34b5035ca",
+      "url": "https://huggingface.co/datasets/VisuLogic/VisuLogic",
+      "license": "apache-2.0",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "bytes": 2506,
+          "git_blob_sha1": "4ec5db3ecf5d5c8c4cb210d894ef0a9f57fc3b36"
+        },
+        {
+          "path": "README.md",
+          "bytes": 5379,
+          "git_blob_sha1": "9b02d6fdd28351da2fcfcadb6738cfbd0985cd77"
+        },
+        {
+          "path": "assets/examples_in_benchmarks.png",
+          "bytes": 996645,
+          "sha256": "8c316182e6196414380ab054767c886da70715497e51977db313b7d0eed967ce"
+        },
+        {
+          "path": "assets/overview4.png",
+          "bytes": 591252,
+          "sha256": "2588f340db2a38780fd9c2173710eaa02b805dd34bccce780ef42c6366bccb59"
+        },
+        {
+          "path": "assets/response_extract.png",
+          "bytes": 293889,
+          "sha256": "602c3e73aab2b7ad4477765b04193102944e2b545041d2b4a23eb472c12f3ff6"
+        },
+        {
+          "path": "data.jsonl",
+          "bytes": 294456,
+          "git_blob_sha1": "a3442b1be0519c7cfba7c22e7429bfe94769e20c"
+        },
+        {
+          "path": "data.tsv",
+          "bytes": 34795803,
+          "sha256": "235581aa8a8586d674a1ca841f563a5084fb0527b0693dbc379af31a2187a316"
+        },
+        {
+          "path": "images.zip",
+          "bytes": 35713870,
+          "sha256": "86157164e4ee61296ed923dca61c115f08ba0633ca7c973029dbec3e0edf555b"
+        }
+      ],
+      "splits": {
+        "test": 1000
+      },
+      "raw_directory": "benchmark/bench/_raw/visulogic",
+      "prepared_directory": "benchmark/bench/visulogic"
+    }
+  }
+}

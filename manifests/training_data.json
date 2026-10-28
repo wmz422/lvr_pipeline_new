@@ -1,0 +1,21 @@
+{
+  "train": 172224,
+  "val": 7571,
+  "vstar_matches_sha256": "f7abfdb823dce79be0351255e0715149ebd4dfa4d019ebd778dccf4669eb8a34",
+  "files": {
+    "paper_experiments/datasets/vstar_decontaminated_v1/sft/train/index.json": "ff5497e162fa43728caa7982acadcf525d860e0fd298ef1319ec6549a8e528a9",
+    "paper_experiments/datasets/vstar_decontaminated_v1/sft/train/part-00001.json": "ec57cd9654d65c33cf2900144d5b2e203d4cc0421d1bee25625004c83d6cecf8",
+    "paper_experiments/datasets/vstar_decontaminated_v1/sft/train/part-00000.json": "04f3f93462314a142b9793b3c558a2920883040283b5e7420118cbe0496dde27",
+    "paper_experiments/datasets/vstar_decontaminated_v1/sft/test/index.json": "1b276990bb6aff9c17c0dc23e1d9e991905f87b44eb73bb0a1397a366db63f1f",
+    "paper_experiments/datasets/vstar_decontaminated_v1/sft/test/part-00000.json": "0fd287bb8300e4ba3bbc3d25c18f1b617e9f45d5a00831a1b8007c4f66f53d75",
+    "paper_experiments/datasets/vstar_decontaminated_v1/align/train/part-00002.json": "e1f2eaa7d13a53223b9d7e35661fc2f7416e4fc3c036d1f027b8615e73a783c5",
+    "paper_experiments/datasets/vstar_decontaminated_v1/align/train/index.json": "f18d94b124dab70527935ca1e4f2ac49e8f2662d9e60d4728abc575327f4e99d",
+    "paper_experiments/datasets/vstar_decontaminated_v1/align/train/part-00001.json": "b04bff9a83504657879157a9b873d6a3a854bfe8fce5e6275f33fe9cc12d94be",
+    "paper_experiments/datasets/vstar_decontaminated_v1/align/train/part-00000.json": "99fa5cbca6b82ab5280b666a48bf1d5a0a4c4e017e5b8f9f4351068dcd20c65e",
+    "paper_experiments/datasets/vstar_decontaminated_v1/align/test/index.json": "787baab539df13c44c66bc2e16b9011f3a10f13c15494e15fe34e39c63653dd4",
+    "paper_experiments/datasets/vstar_decontaminated_v1/align/test/part-00000.json": "08b2d31518a505717dbdbf5fa5bf8998a9c12cd3a4a96d62941341542747a8e7",
+    "paper_experiments/2026-10-26-qwen25-no-sat-ablation/data/reasoning_train_without_sat.json": "fa094d2f0d0f5454d9c28715b4d02a994df1544550bd5b94555119c180d5fda2",
+    "paper_experiments/2026-10-26-qwen25-no-sat-ablation/data/plain_qa_lengths.json.gz": "2bfc05e46ce6ac6dd02cf17be3dca199f5fcf6f9928093b1c05a127f056dc072"
+  },
+  "length_fingerprint_project_root": "/workspace/wmz/workspace/lvr_pipeline_new"
+}
