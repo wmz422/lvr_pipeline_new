@@ -63,6 +63,7 @@ def bootstrap(data_source=None):
 
 
 def main(argv=None):
+    os.chdir(ROOT)
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--skip-bootstrap', action='store_true')
     parser.add_argument('--data-source')
