@@ -42,8 +42,9 @@ Git 保存代码、配方、模型版本、原始来源和逐文件校验清单�
 冻结版本保留原始记录与顺序；本次训练不消费其中的 description 字段。
 Plain 的实测 token 长度清单包含路径指纹；`prepare-data` 先验证历史指纹，再仅重新绑定新目录，所有长度值保持不变。
 公开数据集：[Wing22/qwen25-flow-repro-data-v1](https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1)。
-**当前正在上传**；完成远端校验后，固定的数据集 commit 与下载地址会写入 `manifests/publication.json`。
-数据上传完成后可以使用下面的 HTTPS 地址恢复，也可以用 `--source /path/to/data-v1` 指向本地数据包。
+20 个分片已全部上传并通过公开访问、文件大小和 SHA256 校验。
+固定的数据集版本为 `7068d035c60c09dc1b343438520bdbd12107e0de`，完整发布记录见 `manifests/publication.json`。
+默认恢复命令使用该固定版本；也可以用 `--source /path/to/data-v1` 指向本地数据包。
 本机另有 `artifacts/qwen25-flow-repro.bundle` 代码仓库备份；从 GitHub 克隆时无需该文件。
 
 数据包不含模型权重、训练 checkpoint、RGB 重建缓存或约 319 GiB 的离线 VAE 缓存。
@@ -61,10 +62,10 @@ git clone --branch repro/qwen25-flow-20261028 --single-branch \
 cd qwen25-flow-repro
 bash tools/setup.sh
 
-# 数据上传完成后，从公开数据集下载并校验、恢复。
-.venv/bin/python reproduce.py restore-data \
-  --source https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1/resolve/main
-# 固定版本写入 publication.json 后，也可以省略 --source 使用该固定版本。
+# 从公开数据集的固定版本下载并逐文件校验、恢复。
+.venv/bin/python reproduce.py restore-data
+# 如需显式传入地址，使用固定版本：
+# .venv/bin/python reproduce.py restore-data --source https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1/resolve/7068d035c60c09dc1b343438520bdbd12107e0de
 
 # 按锁定 revision 下载两个模型，并校验所有权重/配置文件。
 .venv/bin/python reproduce.py download-models

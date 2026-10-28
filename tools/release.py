@@ -5,15 +5,18 @@ import argparse
 import gzip
 import hashlib
 import io
+import http.client
 import json
 import os
 from pathlib import Path, PurePosixPath
 import shutil
+import ssl
 import tarfile
 import time
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 import urllib.parse
+import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -227,19 +230,38 @@ def fetch_archive(source, spec, cache):
         return local
     target.parent.mkdir(parents=True, exist_ok=True)
     partial = target.with_name(target.name + '.partial')
-    offset = partial.stat().st_size if partial.exists() else 0
-    request = urllib.request.Request(source.rstrip('/') + '/' + urllib.parse.quote(spec['file']),
-                                     headers={'Range': f'bytes={offset}-'} if offset else {})
-    with urllib.request.urlopen(request, timeout=60) as response:
-        if response.status == 206 and not response.headers.get('Content-Range', '').startswith(f'bytes {offset}-'):
-            raise ValueError('Incorrect resume range')
-        mode = 'ab' if response.status == 206 else 'wb'
-        with partial.open(mode) as output:
-            shutil.copyfileobj(response, output, 4 * 1024**2)
-    if partial.stat().st_size != spec['bytes'] or sha256(partial) != spec['sha256']:
-        raise ValueError('Incomplete or corrupt download; rerun to resume')
-    partial.replace(target)
-    return target
+    for attempt in range(5):
+        offset = partial.stat().st_size if partial.exists() else 0
+        if offset == spec['bytes']:
+            if sha256(partial) != spec['sha256']:
+                raise ValueError('Corrupt completed download')
+            partial.replace(target)
+            return target
+        if offset > spec['bytes']:
+            raise ValueError('Existing partial download exceeds the locked size')
+        request = urllib.request.Request(source.rstrip('/') + '/' + urllib.parse.quote(spec['file']),
+                                         headers={'Range': f'bytes={offset}-'} if offset else {})
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                if response.status == 206 and not response.headers.get('Content-Range', '').startswith(f'bytes {offset}-'):
+                    raise ValueError('Incorrect resume range')
+                mode = 'ab' if response.status == 206 else 'wb'
+                with partial.open(mode) as output:
+                    shutil.copyfileobj(response, output, 4 * 1024**2)
+            if partial.stat().st_size < spec['bytes']:
+                raise ConnectionError('Download interrupted before the locked size')
+        except (urllib.error.URLError, ConnectionError, TimeoutError, ssl.SSLError, http.client.HTTPException) as error:
+            if isinstance(error, urllib.error.HTTPError) and error.code not in (408, 429, 500, 502, 503, 504):
+                raise
+            if attempt == 4:
+                raise
+            print(f'Retrying interrupted download ({attempt + 1}/5): {spec["file"]}', flush=True)
+            time.sleep(2 ** attempt)
+            continue
+        if partial.stat().st_size != spec['bytes'] or sha256(partial) != spec['sha256']:
+            raise ValueError('Corrupt download')
+        partial.replace(target)
+        return target
 
 
 def unpack(archive, entries, root):

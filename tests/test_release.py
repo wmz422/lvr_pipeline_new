@@ -7,6 +7,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from release import pack, load_lock, unpack, safe_target, fetch_archive, sha256, restore_source
@@ -15,6 +16,36 @@ from prepare_benchmarks import binary_values
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_network_interruption_resumes_at_verified_byte_offset(self):
+        payload = b'portable frozen archive'
+        class Interrupted(io.BytesIO):
+            status = 200
+            headers = {}
+            def read(self, size=-1):
+                if self.tell() == 0:
+                    return super().read(3)
+                raise ConnectionResetError('connection interrupted')
+        resumed = io.BytesIO(payload[3:])
+        resumed.status = 206
+        resumed.headers = {'Content-Range': f'bytes 3-{len(payload)-1}/{len(payload)}'}
+        with tempfile.TemporaryDirectory() as directory:
+            spec = {'file': 'one.tar', 'bytes': len(payload), 'sha256': hashlib.sha256(payload).hexdigest()}
+            with patch('release.urllib.request.urlopen', side_effect=[Interrupted(payload), resumed]) as request, patch('release.time.sleep'):
+                restored = fetch_archive('https://example.org/frozen', spec, Path(directory))
+            self.assertEqual(restored.read_bytes(), payload)
+            self.assertEqual(request.call_args_list[1].args[0].get_header('Range'), 'bytes=3-')
+
+    def test_complete_partial_is_verified_without_invalid_range_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payload = b'fully received before interruption'
+            (root / 'one.tar.partial').write_bytes(payload)
+            spec = {'file': 'one.tar', 'bytes': len(payload), 'sha256': hashlib.sha256(payload).hexdigest()}
+            with patch('release.urllib.request.urlopen') as request:
+                restored = fetch_archive('https://example.org/frozen', spec, root)
+                request.assert_not_called()
+            self.assertEqual(restored.read_bytes(), payload)
+
     def test_published_download_default_is_bound_to_exact_release(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

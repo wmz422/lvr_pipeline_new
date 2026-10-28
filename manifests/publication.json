@@ -1,0 +1,48 @@
+{
+  "schema": "qwen25-reproduction-publication-v1",
+  "published_at_utc": "2026-10-28T13:48:24.604478+00:00",
+  "github": {
+    "repository": "wmz422/lvr_pipeline_new",
+    "branch": "repro/qwen25-flow-20261028",
+    "url": "https://github.com/wmz422/lvr_pipeline_new/tree/repro/qwen25-flow-20261028",
+    "original_main_commit": "742eb870dee37cdfea0f3bb200520c3457a4f68d"
+  },
+  "huggingface": {
+    "repo_id": "Wing22/qwen25-flow-repro-data-v1",
+    "release_sha256": "3f010350069c1466c6409d34ad34552f2fddd22ab7e31f3749c177a1357318fa",
+    "status": "complete",
+    "private": false,
+    "revision": "7068d035c60c09dc1b343438520bdbd12107e0de",
+    "url": "https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1",
+    "download_base_url": "https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1/resolve/7068d035c60c09dc1b343438520bdbd12107e0de",
+    "files_verified": 27,
+    "archives": 20,
+    "archive_bytes": 41161256960,
+    "verification": "Unauthenticated pinned snapshot: all sizes and SHA256; LFS objects use server-reported SHA256"
+  },
+  "verification": {
+    "release_archives": 20,
+    "release_archive_bytes": 41161256960,
+    "public_remote_file_checks": "All 27 files checked for exact size and SHA256; LFS SHA256 checked against server metadata, regular files downloaded anonymously",
+    "additional_packaging_tests": {
+      "discovered": 10,
+      "passed": 10,
+      "scope": "release integrity, exact published revision binding, interrupted HTTP resume, recipes",
+      "log_sha256": "89148023613aacda450526393390c2955ca17e8e0bbda91d94bfc77538589441"
+    },
+    "evaluation_parity_with_current_experiment": {
+      "files_compared": 39,
+      "byte_identical_files": 37,
+      "adapted_launchers": [
+        "lvr_pipeline_new/scripts/paper_benchmarks/evaluate.py",
+        "lvr_pipeline_new/scripts/paper_benchmarks/prepare.py"
+      ],
+      "only_adaptation": "Scoring Python interpreter selection",
+      "answer_template": "answer-parsing-2026-10-26-v2",
+      "answer_template_sha256": "26562d6a533384b11f20e9b958b392ed89de7f62fde703998d8454ece55ede14",
+      "protocol_sha256": "a02bb402462202a6e9ac8e9203331208a00800d9cffa70eb71d4c7ab4d6b11d9",
+      "records_sha256": "d44822c069d41048752c317eb5a0443f19e0ccc83d4db6019e8b218184ed6526",
+      "benchmark_manifest_sha256": "f222a6fdca95c7b78bb09c018c590040e571b673d2bd4f48a601f6273ba2f9eb"
+    }
+  }
+}
