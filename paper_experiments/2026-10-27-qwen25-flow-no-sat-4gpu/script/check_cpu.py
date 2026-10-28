@@ -128,7 +128,9 @@ def main():
     p.add_argument("--launch-output", type=Path)
     forwarded = ("gpus", "eval-gpus", "teacher-batch-size", "student-batch-size", "flow-data", "flow-latents",
                  "warmup-batch-size", "joint-batch-size", "teacher-optimizer-device",
-                 "warmup-optimizer-device", "joint-optimizer-device", "cpu-threads")
+                 "warmup-optimizer-device", "joint-optimizer-device", "cpu-threads", "zero-stage",
+                 "teacher-zero-stage", "warmup-zero-stage", "joint-zero-stage", "parameter-offload",
+                 "flow-generator-batch-size")
     for key in forwarded:
         p.add_argument("--" + key)
     a = p.parse_args()

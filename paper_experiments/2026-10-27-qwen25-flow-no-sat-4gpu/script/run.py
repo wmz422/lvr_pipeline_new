@@ -39,14 +39,25 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("output", "flow_data", "flow_latents"):
         parser.add_argument("--" + name.replace("_", "-"), type=Path, default=Path(defaults[name]))
-    for name in ("gpus", "eval_gpus", "teacher_batch_size", "student_batch_size"):
+    for name in ("gpus", "teacher_batch_size", "student_batch_size"):
         parser.add_argument("--" + name.replace("_", "-"), type=int, default=defaults[name])
+    parser.add_argument("--eval-gpus", type=int, help="Evaluation workers; default: min(training GPUs, 8)")
     for name in ("warmup", "joint"):
         parser.add_argument(f"--{name}-batch-size", type=int,
                             help="Override this student stage's per-GPU batch")
     for name in ("teacher", "warmup", "joint"):
         parser.add_argument(f"--{name}-optimizer-device", choices=("cuda", "cpu"), default="cuda",
                             help="Place the unchanged AdamW optimizer states on this device")
+        parser.add_argument(f"--{name}-zero-stage", type=int, choices=(2, 3),
+                            help="Override --zero-stage for this training phase")
+    parser.add_argument("--zero-stage", type=int, choices=(2, 3), default=3,
+                        help="DeepSpeed ZeRO stage, shared by all phases unless overridden (default: 3)")
+    parser.add_argument("--parameter-offload", choices=("none", "cpu"), default="none",
+                        help="Optionally offload model parameters to CPU; requires ZeRO-3 in every phase")
+    parser.add_argument("--flow-generator-batch-size", type=int, default=defaults["flow_generator_batch_size"],
+                        help="Frozen Flow forward sub-batch; independent of the global training batch")
+    parser.add_argument("--skip-preflight", action="store_true",
+                        help="Skip the separate four-update GPU smoke check; no automatic hardware tuning is performed")
     parser.add_argument("--cpu-threads", type=int, default=2)
     parser.add_argument("--teacher-sees-question", action=argparse.BooleanOptionalAction,
                         default=defaults["teacher_sees_question"], help="Independent teacher-input ablation; default false")
@@ -64,14 +75,25 @@ def parse_args(argv=None):
     actions.add_argument("--train-only", action="store_true", help="GPU preflight and full training, without evaluation")
     actions.add_argument("--eval-only", action="store_true", help="Evaluate this run's completed final student")
     args = parser.parse_args(argv)
-    if not 1 <= args.gpus <= 8 or not 1 <= args.eval_gpus <= 8:
-        parser.error("Use 1..8 GPUs")
-    for batch in (args.teacher_batch_size, args.student_batch_size,
+    if args.skip_preflight and args.preflight_only:
+        parser.error("--skip-preflight cannot be combined with --preflight-only")
+    if args.eval_gpus is None:
+        args.eval_gpus = min(args.gpus, 8)
+    if args.gpus < 1 or not 1 <= args.eval_gpus <= 8:
+        parser.error("Training GPUs must be positive; the unchanged benchmark launcher supports 1..8 evaluation GPUs")
+    for name in ("teacher", "warmup", "joint"):
+        if getattr(args, name + "_zero_stage") is None:
+            setattr(args, name + "_zero_stage", args.zero_stage)
+    if args.parameter_offload == "cpu" and any(getattr(args, name + "_zero_stage") != 3
+                                               for name in ("teacher", "warmup", "joint")):
+        parser.error("CPU parameter offload requires ZeRO-3 in every phase")
+    for batch in (args.teacher_batch_size,
                   args.warmup_batch_size or args.student_batch_size,
                   args.joint_batch_size or args.student_batch_size):
         if batch < 1 or 128 % (args.gpus * batch):
             parser.error("Each per-GPU batch × GPUs must divide global batch 128")
-    if args.cpu_threads < 1 or args.warmup_batch_size == 0 or args.joint_batch_size == 0:
+    if (args.cpu_threads < 1 or args.flow_generator_batch_size < 1
+            or args.warmup_batch_size == 0 or args.joint_batch_size == 0):
         parser.error("CPU threads and explicit stage batches must be positive")
     args.output = args.output.expanduser().resolve()
     args.flow_data = args.flow_data.expanduser().resolve()
@@ -155,7 +177,7 @@ def build_recipes(args, plain, counts, settings, *, preflight=False):
         tail = counts["train"] // args.gpus % (batch * accumulation)
         if tail and (tail < accumulation or tail % accumulation):
             raise ValueError(f"{phase}: tail {tail} cannot split into {accumulation} equal nonempty "
-                             "microbatches; with 4 GPUs use per-GPU batch >= 2 (dividing 32)")
+                             "microbatches; use per-GPU batch >= 2 with GPUs × batch dividing 128")
         per_epoch = math.ceil(math.ceil(math.ceil(counts["train"] / args.gpus) / batch) / accumulation)
         epochs = args.defaults["teacher_epochs" if teacher else "student_epochs"]
         updates = args.defaults["warmup_steps"] if phase == "warmup" else per_epoch * epochs
@@ -168,13 +190,24 @@ def build_recipes(args, plain, counts, settings, *, preflight=False):
         config.update(exp_name=str(output), version=phase)
         data, trainer = config["data"], config["trainer"]
         optimizer_device = getattr(args, ("teacher" if teacher else phase) + "_optimizer_device")
-        if optimizer_device == "cpu":
-            strategy = trainer["strategy"]["init_args"]
-            deepspeed = json.loads(Path(strategy["config"]).read_text())
-            if deepspeed["zero_optimization"]["stage"] != 3:
-                raise ValueError("Optimizer offload requires the existing ZeRO-3 recipe")
-            deepspeed["zero_optimization"]["offload_optimizer"] = {"device": "cpu", "pin_memory": True}
-            deepspeed["zero_force_ds_cpu_optimizer"] = False
+        stage = getattr(args, ("teacher" if teacher else phase) + "_zero_stage")
+        strategy = trainer["strategy"]["init_args"]
+        deepspeed = (copy.deepcopy(strategy["config"]) if isinstance(strategy["config"], dict)
+                     else json.loads(Path(strategy["config"]).read_text()))
+        if stage != 3 or optimizer_device == "cpu" or args.parameter_offload == "cpu":
+            zero = deepspeed["zero_optimization"]
+            zero["stage"] = stage
+            zero.pop("offload_optimizer", None)
+            zero.pop("offload_param", None)
+            if stage == 2:
+                for key in list(zero):
+                    if key.startswith("stage3_") or key in ("sub_group_size", "gather_16bit_weights_on_model_save"):
+                        zero.pop(key)
+            if optimizer_device == "cpu":
+                zero["offload_optimizer"] = {"device": "cpu", "pin_memory": True}
+                deepspeed["zero_force_ds_cpu_optimizer"] = False
+            if args.parameter_offload == "cpu":
+                zero["offload_param"] = {"device": "cpu", "pin_memory": True}
             strategy["config"] = deepspeed
         data.pop("train_length_manifest_path", None)
         data.update(batch_size=batch, num_latents=8, include_encoder=True, include_descriptions=False,
@@ -221,7 +254,7 @@ def build_recipes(args, plain, counts, settings, *, preflight=False):
                 flow_model_path=args.defaults["flow_model"], flow_weight=args.defaults["flow_weight"],
                 flow_mapper_hidden_size=1024, flow_gradient_checkpointing=True,
                 flow_protocol_sha256=settings["protocol_sha256"],
-                flow_generator_batch_size=args.defaults["flow_generator_batch_size"],
+                flow_generator_batch_size=args.flow_generator_batch_size,
                 flow_vae_batch_size=args.cache_vae_batch_size, flow_latent_cache_bytes=0)
             data.update(flow_data_root=str(args.flow_data), flow_protocol_sha256=settings["protocol_sha256"],
                         flow_latent_root=str(args.flow_latents), flow_vae_model_path=args.defaults["flow_model"],
@@ -269,8 +302,28 @@ def cache_command(args):
             "--shard-mib", str(args.cache_shard_mib)]
 
 
+def hardware_summary(args, configs):
+    phases = {}
+    for phase, config in configs.items():
+        trainer, data = config["trainer"], config["data"]
+        value = trainer["strategy"]["init_args"]["config"]
+        deepspeed = value if isinstance(value, dict) else json.loads(Path(value).read_text())
+        zero = deepspeed["zero_optimization"]
+        phases[phase] = {"gpus": args.gpus, "per_gpu_batch": data["batch_size"],
+                         "accumulation": trainer["accumulate_grad_batches"],
+                         "global_batch": args.gpus * data["batch_size"] * trainer["accumulate_grad_batches"],
+                         "zero_stage": zero["stage"],
+                         "optimizer_device": zero.get("offload_optimizer", {}).get("device", "cuda"),
+                         "parameter_device": zero.get("offload_param", {}).get("device", "cuda"),
+                         "gradient_scale_reference": trainer["plugins"][0]["init_args"]["reference_accumulation"]}
+    return {"global_batch": 128, "epoch_tail_global_batch": 64, "phases": phases,
+            "eval_gpus": args.eval_gpus, "flow_generator_sub_batch": args.flow_generator_batch_size,
+            "automatic_hardware_tuning": False}
+
+
 def execution_settings(args):
     return {"cpu_threads": args.cpu_threads,
+            "skip_preflight": args.skip_preflight,
             "cuda_allocator": os.environ.get("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True"),
             "nccl_p2p_disable": os.environ.get("NCCL_P2P_DISABLE", "1"),
             "kernel_cache": os.environ.get("PYTORCH_KERNEL_CACHE_PATH", str(EXPERIMENT / ".cache/torch/kernels"))}
@@ -292,8 +345,10 @@ def make_plan(args, configs, steps, inputs, settings):
              FLOW / "scripts/export_teacher.py", *sorted((PROJECT / "src/lvr").rglob("*.py")),
              PROJECT / "scripts/reasoning_data/train_and_evaluate.py", PROJECT / "scripts/latent_prediction/run.py",
              PROJECT / "scripts/paper_benchmarks/evaluate.py"]
+    files += [WORKSPACE / "reproduce.py", WORKSPACE / "train_flow.sh", WORKSPACE / "tools/start_flow.py"]
     return {"schema": "qwen25-no-sat-four-gpu-offline-vae-v2", "phases": list(PHASES),
             "execution": execution_settings(args),
+            "hardware": hardware_summary(args, configs),
             "inputs": inputs, "recipes": configs, "optimizer_steps": steps,
             "reconstruction_protocol": settings,
             "latent_cache": {"root": str(args.flow_latents), "dtype": "float32", "online_vae": False,
@@ -359,6 +414,7 @@ def main(argv=None):
     environment = execution_environment(args)
     if args.dry_run:
         print(json.dumps({"status": "dry_run", "gpu_started": False, "counts": counts,
+                          "hardware": hardware_summary(args, configs),
                           "optimizer_steps": steps, "recipes": configs,
                           "latent_preparation": cache_command(args),
                           "evaluation": evaluation_command(args, plain, steps)}, indent=2))
@@ -388,6 +444,12 @@ def main(argv=None):
                         "--teacher-optimizer-device", args.teacher_optimizer_device,
                         "--warmup-optimizer-device", args.warmup_optimizer_device,
                         "--joint-optimizer-device", args.joint_optimizer_device,
+                        "--zero-stage", str(args.zero_stage),
+                        "--teacher-zero-stage", str(args.teacher_zero_stage),
+                        "--warmup-zero-stage", str(args.warmup_zero_stage),
+                        "--joint-zero-stage", str(args.joint_zero_stage),
+                        "--parameter-offload", args.parameter_offload,
+                        "--flow-generator-batch-size", str(args.flow_generator_batch_size),
                         *(["--warmup-batch-size", str(args.warmup_batch_size)] if args.warmup_batch_size else []),
                         *(["--joint-batch-size", str(args.joint_batch_size)] if args.joint_batch_size else [])],
                        args.output / "cpu_checks.log", environment)
@@ -412,7 +474,8 @@ def main(argv=None):
             pre_args = copy.copy(args)
             pre_args.output = args.output / "preflight"
             save_plan(pre_args.output, make_plan(pre_args, pre_configs, pre_steps, inputs, settings))
-            execute_stages(pre_args, pre_configs, pre_steps, environment, workflow)
+            if not args.skip_preflight:
+                execute_stages(pre_args, pre_configs, pre_steps, environment, workflow)
             if args.preflight_only:
                 return
             execute_stages(args, configs, steps, environment, workflow)

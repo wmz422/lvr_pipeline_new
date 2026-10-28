@@ -8,7 +8,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'tools'))
 from common import ROOT, PROJECT, EXPERIMENT, QWEN, SUITE, environment, python, run
 
-FLOW_ARGS = ['--gpus', '4', '--eval-gpus', '4', '--cpu-threads', '8',
+FLOW_ARGS = ['--gpus', '4', '--cpu-threads', '8',
              '--teacher-batch-size', '8', '--teacher-optimizer-device', 'cpu',
              '--warmup-batch-size', '8', '--warmup-optimizer-device', 'cuda',
              '--joint-batch-size', '4', '--joint-optimizer-device', 'cuda']

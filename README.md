@@ -43,6 +43,7 @@ Git 保存代码、配方、模型版本、原始来源和逐文件校验清单�
 Plain 的实测 token 长度清单包含路径指纹；`prepare-data` 先验证历史指纹，再仅重新绑定新目录，所有长度值保持不变。
 公开数据集：[Wing22/qwen25-flow-repro-data-v1](https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1)。
 20 个分片已全部上传并通过公开访问、文件大小和 SHA256 校验。
+另已在新目录从公开固定版本恢复元数据分片，141 个文件全部通过校验。
 固定的数据集版本为 `7068d035c60c09dc1b343438520bdbd12107e0de`，完整发布记录见 `manifests/publication.json`。
 默认恢复命令使用该固定版本；也可以用 `--source /path/to/data-v1` 指向本地数据包。
 本机另有 `artifacts/qwen25-flow-repro.bundle` 代码仓库备份；从 GitHub 克隆时无需该文件。
@@ -50,7 +51,84 @@ Plain 的实测 token 长度清单包含路径指纹；`prepare-data` 先验证�
 数据包不含模型权重、训练 checkpoint、RGB 重建缓存或约 319 GiB 的离线 VAE 缓存。
 这几项分别由固定版本下载、训练和预处理生成。缓存身份包含路径与实现哈希，换目录后应重新生成，不复用旧实验的 cache plan。
 
-## 从新机器开始
+## 一条命令启动 Flow 训练、验证和评测
+
+在 Linux 上准备 Python 3.12、Python 3.13 和兼容的 NVIDIA 驱动后：
+
+```bash
+git clone --branch repro/qwen25-flow-20261028 --single-branch \
+  https://github.com/wmz422/lvr_pipeline_new.git qwen25-flow-repro
+cd qwen25-flow-repro
+bash train_flow.sh --output runs/flow-4gpu
+```
+
+首次启动会安装缺失的仓库虚拟环境，下载并校验固定版本的数据和两个模型，
+重新执行数据筛选，构建 RGB / FP32 VAE 缓存，然后运行 Teacher → Warmup → Joint。
+每阶段保留验证；Joint 完成后自动导出并运行完整 11 项 benchmark 和评分。
+准备成功后会记录输入绑定，后续使用同一仓库恢复时复用已准备的数据、模型和缓存。
+原始训练逻辑、分辨率、数据、损失权重和答案提取规则保持不变。
+
+硬件参数由你手动指定，脚本不做自动测速、配置搜索或 OOM 后的自动降 batch。
+例如四卡配置完整写法为：
+
+```bash
+bash train_flow.sh \
+  --gpus 4 \
+  --teacher-batch-size 8 --warmup-batch-size 8 --joint-batch-size 4 \
+  --zero-stage 3 \
+  --teacher-optimizer-device cpu \
+  --warmup-optimizer-device cuda --joint-optimizer-device cuda \
+  --output runs/flow-4gpu
+
+# 八卡的另一组合法 batch；评测默认使用八卡。
+bash train_flow.sh \
+  --gpus 8 \
+  --teacher-batch-size 4 --warmup-batch-size 4 --joint-batch-size 2 \
+  --zero-stage 3 --warmup-zero-stage 2 \
+  --output runs/flow-8gpu
+```
+
+**全局 batch 固定为 128**：每个阶段自动计算 `accumulation = 128 / (GPU 数量 × 单卡 batch)`。
+必须整除，并且单卡 batch 至少为 2，以保留 Plain 的 64 条 epoch 尾批。
+例如四卡 Teacher 为 `4 × 8 × 4 = 128`，八卡 Teacher 为 `8 × 4 × 4 = 128`；
+Teacher / Joint 始终各 1,346 次更新，Warmup 始终 200 次。
+同时保留 Teacher=16、student=8 的原始梯度缩放参照，不随硬件参数改变。
+
+| 参数 | 作用 | 默认 |
+| --- | --- | --- |
+| `--gpus` | 单机训练卡数；必须能按固定 batch 和尾批分配 | 4 |
+| `--teacher-batch-size` / `--warmup-batch-size` / `--joint-batch-size` | 各阶段单卡 batch | 8 / 8 / 4 |
+| `--zero-stage 2\|3` | 全部阶段的 ZeRO 策略 | 3 |
+| `--teacher-zero-stage` / `--warmup-zero-stage` / `--joint-zero-stage` | 单独覆盖某阶段的 ZeRO 策略 | 跟随 `--zero-stage` |
+| `--teacher-optimizer-device cpu\|cuda` 等三个阶段参数 | 优化器放 CPU 或 GPU | cpu / cuda / cuda |
+| `--parameter-offload none\|cpu` | 是否把模型参数卸载到 CPU；cpu 要求各阶段均为 ZeRO-3 | none |
+| `--flow-generator-batch-size` | 冻结 Flow 生成器内部子 batch，不改变总 batch | 2 |
+| `--eval-gpus` | benchmark 推理卡数 | `min(训练卡数, 8)` |
+| `--cpu-threads` | 每个训练进程的 CPU 线程数 | 8 |
+
+ZeRO-2 分片优化器状态和梯度，ZeRO-3 额外分片模型参数；CPU offload 用主机内存换取显存空间。
+具体选择取决于显存和互联条件，参数含义见 [DeepSpeed 文档](https://deepspeed.readthedocs.io/en/stable/zero3.html)。
+这些选择不会修改 batch、损失系数或精度，实际是否更快由平台决定。
+
+```bash
+# 只打印实际卡数、batch、累积、ZeRO/offload 和步数，不下载、不启动 GPU。
+bash train_flow.sh --gpus 2 --teacher-batch-size 4 \
+  --warmup-batch-size 4 --joint-batch-size 2 --dry-run
+
+# 使用相同硬件参数、相同 output 恢复。
+bash train_flow.sh --output runs/flow-4gpu --resume
+```
+
+这个入口默认直接开始正式训练，不自动进行 GPU 试跑；如需独立的每阶段 4 步预检，显式加 `--preflight`。
+预检不参与正式训练初始化，也不会搜索或改变硬件参数。
+数据和模型已通过下方手动流程准备时，可以加 `--skip-bootstrap` 跳过下载准备。
+本地数据包可通过 `--data-source /path/to/data-v1` 指定。
+`--help` 无需安装环境；`--dry-run` 需要训练依赖已安装。
+恢复时保留原有参数；更改 GPU、batch 或 ZeRO 策略应使用新的 output。
+
+## 手动准备环境和数据
+
+以下是把自动准备流程拆开执行的方式，也适用于只下载、检查数据。
 
 Linux；训练 Python 3.12，几何评分 Python 3.13。复现参考平台为 4 × A100 80GB、64 vCPU、450 GiB RAM。
 需要 NVIDIA 驱动支持所固定的 PyTorch CUDA 12.8 版本。请为 RGB/VAE 缓存和多份原生 ZeRO checkpoint 准备 TB 级磁盘。

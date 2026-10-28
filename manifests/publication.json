@@ -43,6 +43,18 @@
       "protocol_sha256": "a02bb402462202a6e9ac8e9203331208a00800d9cffa70eb71d4c7ab4d6b11d9",
       "records_sha256": "d44822c069d41048752c317eb5a0443f19e0ccc83d4db6019e8b218184ed6526",
       "benchmark_manifest_sha256": "f222a6fdca95c7b78bb09c018c590040e571b673d2bd4f48a601f6273ba2f9eb"
+    },
+    "public_http_metadata_restoration": {
+      "status": "passed",
+      "files": 141,
+      "archive": "metadata-010.tar",
+      "revision": "7068d035c60c09dc1b343438520bdbd12107e0de",
+      "authentication": "none",
+      "fresh_directory_with_spaces": true,
+      "default_source_used": true,
+      "http_retry_exercised": true,
+      "log_sha256": "7109c41381d449f53009728d4b5b3568691dde309c05a160f740ebb13f184c91",
+      "verified_at_utc": "2026-10-28T14:05:13.840074+00:00"
     }
   }
 }

@@ -133,12 +133,21 @@ class RunAudit(Callback):
                 qa_hash.update(name.encode())
                 qa_hash.update(torch.cat((values[:16], values[-16:])).float().cpu().numpy().tobytes())
             qa_hash_scope = "parameter_samples"
-            parameters = [p for group in trainer.optimizers[0].param_groups for p in group["params"]]
+            optimizer = trainer.optimizers[0]
+            strategy_config = getattr(trainer.strategy, "config", {})
+            zero2 = (isinstance(strategy_config, dict)
+                     and strategy_config.get("zero_optimization", {}).get("stage") == 2)
+            # ZeRO-2's optimizer param_groups contain flattened FP32 partitions.
+            # Validate its original model groups, rather than comparing master
+            # partition identities with the unpartitioned model parameters.
+            logical_groups = optimizer.bit16_groups if zero2 else [g["params"] for g in optimizer.param_groups]
+            parameters = [p for group in logical_groups for p in group]
             assert len(parameters) == len({id(p) for p in parameters})
             assert {id(p) for p in parameters} == {id(p) for p in module.parameters() if p.requires_grad}
-            optimizer_groups = [{"parameters": sum(p.numel() for p in group["params"]),
-                                 "initial_lr": group.get("initial_lr", group["lr"])}
-                                for group in trainer.optimizers[0].param_groups]
+            optimizer_groups = [{"parameters": sum(p.numel() for p in parameters),
+                                 "initial_lr": group.get("initial_lr", group["lr"]),
+                                 **({"partitioned": True} if zero2 else {})}
+                                for parameters, group in zip(logical_groups, optimizer.param_groups)]
         self.record = {
             "started_at_unix": self.started, "rank": trainer.global_rank,
             "expected_optimizer_steps": int(trainer.estimated_stepping_batches),
