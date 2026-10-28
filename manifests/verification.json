@@ -1,0 +1,689 @@
+{
+  "schema": "qwen25-reproduction-verification-v1",
+  "verified_at_utc": "2026-10-28T11:07:49.286483+00:00",
+  "tested_code_commit": "fd5c0ed4cd69fdf9bb07526970b9de3ed7ef719f",
+  "status": "passed",
+  "original_workspace": {
+    "source_files_verified_unchanged": 215,
+    "source_manifest_sha256": "153b4271a7863cfbde55813cc3bcd793756b231e5fe92231753eb830d6c2ed45",
+    "running_training_not_restarted_or_modified": true,
+    "gpu_jobs_started": 0
+  },
+  "regression_tests": {
+    "discovered": 82,
+    "passed": 81,
+    "skipped": 1,
+    "suites": {
+      "packaging_and_recipe_parity": 7,
+      "native_flow_batch_and_gradients": 4,
+      "flow_training_and_cache": 24,
+      "plain_continuation": 3,
+      "training_and_scoring": 44
+    },
+    "skip_reason": "Historical locally generated reasoning fixture absent; the full current benchmark reference-answer acceptance was run separately.",
+    "log_sha256": "a2ee4307b274754fce5e7b3de41258461bb6e94ffbce8240007becd2bbe2a1d8"
+  },
+  "recipe_parity": {
+    "flow_phases": [
+      "teacher_joint",
+      "warmup",
+      "joint"
+    ],
+    "matches_live_recipes_after_path_and_gt_binding_relocation": true,
+    "global_batch": 128,
+    "reference_recipes_sha256": "cb9b0686ee3f0b9a80620910f3304c306b44ab78f64339f3e315acd82683e571"
+  },
+  "training_data_preparation": {
+    "status": "passed",
+    "train": 172224,
+    "val": 7571,
+    "removed_sat_train": 5925,
+    "sat_val": 537,
+    "reasoning_train_sources": {
+      "mentis_form-board": 1821,
+      "mentis_hinge-folding": 1780,
+      "mentis_paper-fold": 1797,
+      "mentis_rushhour": 1783,
+      "mentis_sliding-puzzle": 1824,
+      "mirage_vsp": 897,
+      "thinkmorph_jigsaw": 5315,
+      "thinkmorph_navigation": 5338,
+      "zebra_jigsaw": 19240,
+      "zebra_scientific_geometry": 167,
+      "zebra_scientific_graph_algorithms": 4643,
+      "zebra_scientific_physics": 4913
+    },
+    "resolution_filter": null,
+    "retained_records_and_order_unchanged": true,
+    "plain_length_relocation": {
+      "status": "passed",
+      "records": 172224,
+      "lengths_unchanged": true,
+      "original_items_sha256": "b6ba436b9dc9ae119d0c5a8a85b142bce3767660015d35ee88f04b979197ed3e",
+      "items_sha256": "f3cb6a013653ca1e9adb8b0307a40fe380a9fbc7964a181f6802b24b4279bacb",
+      "path": "${REPO}/.local/plain_qa_lengths.json.gz"
+    }
+  },
+  "cpu_processor_vae_and_datamodule_checks": {
+    "status": "passed",
+    "gpu_started": false,
+    "full_model_instantiated": false,
+    "recipes_checked": [
+      {
+        "phase": "teacher_joint",
+        "preflight": false,
+        "teacher_sees_question": false,
+        "batch": 8,
+        "accumulation": 4
+      },
+      {
+        "phase": "warmup",
+        "preflight": false,
+        "teacher_sees_question": false,
+        "batch": 8,
+        "accumulation": 4
+      },
+      {
+        "phase": "joint",
+        "preflight": false,
+        "teacher_sees_question": false,
+        "batch": 4,
+        "accumulation": 8
+      },
+      {
+        "phase": "teacher_joint",
+        "preflight": true,
+        "teacher_sees_question": false,
+        "batch": 8,
+        "accumulation": 4
+      },
+      {
+        "phase": "warmup",
+        "preflight": true,
+        "teacher_sees_question": false,
+        "batch": 8,
+        "accumulation": 4
+      },
+      {
+        "phase": "joint",
+        "preflight": true,
+        "teacher_sees_question": false,
+        "batch": 4,
+        "accumulation": 8
+      },
+      {
+        "phase": "teacher_joint",
+        "preflight": false,
+        "teacher_sees_question": true,
+        "batch": 8,
+        "accumulation": 4
+      },
+      {
+        "phase": "warmup",
+        "preflight": false,
+        "teacher_sees_question": true,
+        "batch": 8,
+        "accumulation": 4
+      },
+      {
+        "phase": "joint",
+        "preflight": false,
+        "teacher_sees_question": true,
+        "batch": 4,
+        "accumulation": 8
+      },
+      {
+        "phase": "teacher_joint",
+        "preflight": true,
+        "teacher_sees_question": true,
+        "batch": 8,
+        "accumulation": 4
+      },
+      {
+        "phase": "warmup",
+        "preflight": true,
+        "teacher_sees_question": true,
+        "batch": 8,
+        "accumulation": 4
+      },
+      {
+        "phase": "joint",
+        "preflight": true,
+        "teacher_sees_question": true,
+        "batch": 4,
+        "accumulation": 8
+      }
+    ],
+    "data_counts": {
+      "train": 172224,
+      "val": 7571
+    },
+    "all_clean_qa_ids_equal_reconstruction_ids": true,
+    "description_collator_execution": "absent",
+    "teacher_question_toggle_and_answer_exclusion": "passed",
+    "processor_samples": [
+      {
+        "id": "images/original/TreeVGR-RL-37K/13677.jpg:13677",
+        "qa_tokens": 282,
+        "encoder_tokens": 588,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "images/original/TreeVGR-RL-37K/32331.jpg:32331",
+        "qa_tokens": 1968,
+        "encoder_tokens": 5237,
+        "original_images": 1,
+        "encoder_images": 11
+      },
+      {
+        "id": "images/original/TreeVGR-RL-37K/28093.jpg:28093",
+        "qa_tokens": 777,
+        "encoder_tokens": 1370,
+        "original_images": 1,
+        "encoder_images": 4
+      },
+      {
+        "id": "zebra_scientific_graph_algorithms/1000",
+        "qa_tokens": 248,
+        "encoder_tokens": 2147,
+        "original_images": 1,
+        "encoder_images": 10
+      },
+      {
+        "id": "zebra_scientific_physics/17",
+        "qa_tokens": 891,
+        "encoder_tokens": 868,
+        "original_images": 1,
+        "encoder_images": 4
+      },
+      {
+        "id": "mentis_form-board/930202600",
+        "qa_tokens": 811,
+        "encoder_tokens": 1117,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "mentis_hinge-folding/930402601",
+        "qa_tokens": 3217,
+        "encoder_tokens": 3789,
+        "original_images": 2,
+        "encoder_images": 4
+      },
+      {
+        "id": "mentis_paper-fold/930302602",
+        "qa_tokens": 2563,
+        "encoder_tokens": 3503,
+        "original_images": 1,
+        "encoder_images": 4
+      },
+      {
+        "id": "mentis_rushhour/930602600",
+        "qa_tokens": 1952,
+        "encoder_tokens": 2204,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "mentis_sliding-puzzle/930502603",
+        "qa_tokens": 249,
+        "encoder_tokens": 525,
+        "original_images": 2,
+        "encoder_images": 6
+      },
+      {
+        "id": "mirage_vsp/3-100",
+        "qa_tokens": 369,
+        "encoder_tokens": 129,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "thinkmorph_jigsaw/00002",
+        "qa_tokens": 275,
+        "encoder_tokens": 281,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "thinkmorph_navigation/frozenlake_s3_1001_cot",
+        "qa_tokens": 204,
+        "encoder_tokens": 129,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "zebra_jigsaw/1",
+        "qa_tokens": 2562,
+        "encoder_tokens": 2759,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "zebra_scientific_geometry/103",
+        "qa_tokens": 2563,
+        "encoder_tokens": 2855,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "zebra_scientific_graph_algorithms/10",
+        "qa_tokens": 2590,
+        "encoder_tokens": 3231,
+        "original_images": 1,
+        "encoder_images": 3
+      },
+      {
+        "id": "zebra_scientific_physics/0",
+        "qa_tokens": 1244,
+        "encoder_tokens": 1191,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "images/original/TreeVGR-RL-37K/10456.jpg:10456",
+        "qa_tokens": 229,
+        "encoder_tokens": 553,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "images/original/TreeVGR-RL-37K/36227.jpg:36227",
+        "qa_tokens": 2561,
+        "encoder_tokens": 5909,
+        "original_images": 1,
+        "encoder_images": 11
+      },
+      {
+        "id": "images/original/TreeVGR-RL-37K/19527.jpg:19527",
+        "qa_tokens": 660,
+        "encoder_tokens": 1549,
+        "original_images": 1,
+        "encoder_images": 4
+      },
+      {
+        "id": "zebra_scientific_graph_algorithms/1184",
+        "qa_tokens": 248,
+        "encoder_tokens": 2147,
+        "original_images": 1,
+        "encoder_images": 10
+      },
+      {
+        "id": "mirage_vsp/6-1922",
+        "qa_tokens": 524,
+        "encoder_tokens": 423,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "mentis_form-board/930202612",
+        "qa_tokens": 878,
+        "encoder_tokens": 1844,
+        "original_images": 1,
+        "encoder_images": 4
+      },
+      {
+        "id": "mentis_hinge-folding/930402612",
+        "qa_tokens": 3390,
+        "encoder_tokens": 4339,
+        "original_images": 2,
+        "encoder_images": 5
+      },
+      {
+        "id": "mentis_paper-fold/930302620",
+        "qa_tokens": 2563,
+        "encoder_tokens": 2851,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "mentis_rushhour/930602605",
+        "qa_tokens": 1952,
+        "encoder_tokens": 2204,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "mentis_sliding-puzzle/930502668",
+        "qa_tokens": 249,
+        "encoder_tokens": 525,
+        "original_images": 2,
+        "encoder_images": 6
+      },
+      {
+        "id": "mirage_vsp/3-127",
+        "qa_tokens": 371,
+        "encoder_tokens": 129,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "sat_perspective/1203",
+        "qa_tokens": 401,
+        "encoder_tokens": 679,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "thinkmorph_jigsaw/00001",
+        "qa_tokens": 487,
+        "encoder_tokens": 697,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "thinkmorph_navigation/frozenlake_s3_1007_cot",
+        "qa_tokens": 206,
+        "encoder_tokens": 129,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "zebra_jigsaw/10002",
+        "qa_tokens": 2554,
+        "encoder_tokens": 2741,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "zebra_scientific_geometry/1010",
+        "qa_tokens": 2625,
+        "encoder_tokens": 2881,
+        "original_images": 1,
+        "encoder_images": 2
+      },
+      {
+        "id": "zebra_scientific_graph_algorithms/1006",
+        "qa_tokens": 250,
+        "encoder_tokens": 1299,
+        "original_images": 1,
+        "encoder_images": 6
+      },
+      {
+        "id": "zebra_scientific_physics/1003",
+        "qa_tokens": 1832,
+        "encoder_tokens": 2005,
+        "original_images": 1,
+        "encoder_images": 2
+      }
+    ],
+    "reconstruction_examples": [
+      {
+        "id": "images/original/TreeVGR-RL-37K/13677.jpg:13677",
+        "layout": "single_crop",
+        "target_size": [
+          544,
+          496
+        ]
+      },
+      {
+        "id": "images/original/TreeVGR-RL-37K/32331.jpg:32331",
+        "layout": "masked_original",
+        "target_size": [
+          1408,
+          1056
+        ]
+      },
+      {
+        "id": "mentis_form-board/930202600",
+        "layout": "horizontal_auxiliary",
+        "target_size": [
+          624,
+          432
+        ]
+      },
+      {
+        "id": "images/original/TreeVGR-RL-37K/10456.jpg:10456",
+        "layout": "single_crop",
+        "target_size": [
+          512,
+          528
+        ]
+      },
+      {
+        "id": "images/original/TreeVGR-RL-37K/36227.jpg:36227",
+        "layout": "masked_original",
+        "target_size": [
+          1648,
+          1232
+        ]
+      },
+      {
+        "id": "mentis_form-board/930202612",
+        "layout": "horizontal_auxiliary",
+        "target_size": [
+          1872,
+          432
+        ]
+      }
+    ],
+    "real_datamodule_checks": [
+      {
+        "module": "FlowDataModule",
+        "train_ids": [
+          "images/original/TreeVGR-RL-37K/1568.jpg:1568",
+          "images/original/TreeVGR-RL-37K/7896.jpg:7896"
+        ],
+        "validation_ids": [
+          "images/original/TreeVGR-RL-37K/10456.jpg:10456"
+        ],
+        "passed": true,
+        "qa_original_pixels": 2000000,
+        "cpu_probe_flow_original_pixels": 3072
+      },
+      {
+        "module": "StudentDataModule",
+        "train_ids": [
+          "mentis_form-board/930202601",
+          "images/original/TreeVGR-RL-37K/1568.jpg:1568"
+        ],
+        "validation_ids": [
+          "images/original/TreeVGR-RL-37K/10456.jpg:10456"
+        ],
+        "passed": true,
+        "qa_original_pixels": 2000000,
+        "cpu_probe_flow_original_pixels": 3072
+      }
+    ],
+    "limits": "Representative real processor checks; full 7B GPU preflight remains required."
+  },
+  "environment_and_inputs": {
+    "status": "passed",
+    "gpu_used": false,
+    "versions": {
+      "torch": "2.8.0+cu128",
+      "torchvision": "0.23.0+cu128",
+      "transformers": "5.15.0",
+      "lightning": "2.6.5",
+      "diffusers": "0.41.0",
+      "deepspeed": "0.16.4",
+      "huggingface-hub": "1.33.0",
+      "accelerate": "1.14.0",
+      "jsonargparse": "4.51.0",
+      "numpy": "2.5.3",
+      "pillow": "12.3.0",
+      "opencv-python-headless": "4.14.0.94",
+      "datasets": "5.0.1",
+      "pyarrow": "24.0.0",
+      "setuptools": "78.1.0"
+    },
+    "scoring": {
+      "python": [
+        3,
+        13
+      ],
+      "packages": {
+        "numpy": "2.5.3",
+        "scipy": "1.18.1",
+        "shapely": "2.1.2",
+        "matplotlib": "3.11.2",
+        "pillow": "12.3.0"
+      }
+    },
+    "scope": "environment_and_inputs",
+    "plain_length_binding": {
+      "records": 172224,
+      "max_tokens": 3641,
+      "status": "passed"
+    },
+    "splits": {
+      "legacy_train": 122706,
+      "reasoning_train": 49518,
+      "legacy_val": 1241,
+      "reasoning_val": 6330
+    },
+    "benchmark_records": 9957,
+    "benchmark_generations": 10107,
+    "answer_parsing": {
+      "version": "answer-parsing-2026-10-26-v2",
+      "base_template_version": "answer-parsing-2026-10-26-v2",
+      "template_sha256": "26562d6a533384b11f20e9b958b392ed89de7f62fde703998d8454ece55ede14",
+      "wrapper_policy": "tag_repair_v1",
+      "mathvista_policy": "numeric_v1",
+      "answer_policy": "format_compat_v1",
+      "mira_policy": "strict"
+    },
+    "model_check": "all sizes + configuration hashes; download verifies all weight hashes"
+  },
+  "benchmark_rebuild_from_pinned_raw_sources": {
+    "status": "passed",
+    "records": 9957,
+    "generations": 10107,
+    "images": 14408,
+    "counts": {
+      "VStarBench": 191,
+      "HRBench4K": 800,
+      "HRBench8K": 800,
+      "MME-RealWorld-Lite": 1919,
+      "BLINK": 1901,
+      "MentisOculi": 1250,
+      "VSP": 400,
+      "VisuLogic": 1000,
+      "MIRA": 546,
+      "MathVista_testmini": 1000,
+      "SAT": 300
+    },
+    "records_sha256": "d44822c069d41048752c317eb5a0443f19e0ccc83d4db6019e8b218184ed6526",
+    "mode": "rebuild_or_verify"
+  },
+  "benchmark_scorer_acceptance": {
+    "status": "passed",
+    "kind": "reference_answers_not_model_predictions",
+    "reference_correct": 10107,
+    "verified_assets": 14408,
+    "records": 9957,
+    "generations": 10107,
+    "report_sha256": "001dd7ae3ae8f4f678c60a7c49aceeab708d7332d487d6437cd29e5ebc1fcb29"
+  },
+  "data_release": {
+    "status": "complete",
+    "files": 334540,
+    "groups": {
+      "benchmark_images": 14408,
+      "legacy_images": 124138,
+      "metadata": 141,
+      "reasoning_images": 195853
+    },
+    "archives": 20,
+    "payload_bytes": 40904275724,
+    "archive_bytes": 41161256960,
+    "lock_sha256": "3f010350069c1466c6409d34ad34552f2fddd22ab7e31f3749c177a1357318fa",
+    "files_manifest_sha256": "847304f40bcbbbb49347ed92e6ab9c76a670439f6c43349408b59aa1cead96e6",
+    "all_file_bytes_hashed_during_pack": true,
+    "all_archive_bytes_hashed_during_pack": true,
+    "public_upload_performed": false
+  },
+  "relocation": {
+    "status": "passed",
+    "fresh_git_checkout_with_spaces_in_path": true,
+    "invoked_from_outside_checkout": true,
+    "interpreter": "Existing pinned environments, with imports checked to resolve into the new checkout",
+    "model_inputs": "Locally available locked model files; not redownloaded",
+    "restore_using_final_release_lock": {
+      "groups": [
+        "metadata",
+        "benchmark_images"
+      ],
+      "files": 14549
+    },
+    "training_preparation": {
+      "status": "passed",
+      "train": 172224,
+      "val": 7571,
+      "removed_sat_train": 5925,
+      "sat_val": 537,
+      "reasoning_train_sources": {
+        "mentis_form-board": 1821,
+        "mentis_hinge-folding": 1780,
+        "mentis_paper-fold": 1797,
+        "mentis_rushhour": 1783,
+        "mentis_sliding-puzzle": 1824,
+        "mirage_vsp": 897,
+        "thinkmorph_jigsaw": 5315,
+        "thinkmorph_navigation": 5338,
+        "zebra_jigsaw": 19240,
+        "zebra_scientific_geometry": 167,
+        "zebra_scientific_graph_algorithms": 4643,
+        "zebra_scientific_physics": 4913
+      },
+      "resolution_filter": null,
+      "retained_records_and_order_unchanged": true,
+      "plain_length_relocation": {
+        "status": "passed",
+        "records": 172224,
+        "lengths_unchanged": true,
+        "original_items_sha256": "b6ba436b9dc9ae119d0c5a8a85b142bce3767660015d35ee88f04b979197ed3e",
+        "items_sha256": "5642da89d1e50cd5fb8c44428c264c1312331a710791563f2940154fe5a570cf",
+        "path": "${RELOCATED_REPO}/.local/plain_qa_lengths.json.gz"
+      }
+    },
+    "doctor": "passed",
+    "benchmark_asset_verification": {
+      "status": "passed",
+      "records": 9957,
+      "generations": 10107,
+      "images": 14408,
+      "counts": {
+        "VStarBench": 191,
+        "HRBench4K": 800,
+        "HRBench8K": 800,
+        "MME-RealWorld-Lite": 1919,
+        "BLINK": 1901,
+        "MentisOculi": 1250,
+        "VSP": 400,
+        "VisuLogic": 1000,
+        "MIRA": 546,
+        "MathVista_testmini": 1000,
+        "SAT": 300
+      },
+      "records_sha256": "d44822c069d41048752c317eb5a0443f19e0ccc83d4db6019e8b218184ed6526",
+      "mode": "verify"
+    },
+    "dry_runs_passed": [
+      "flow_three_phase_training",
+      "plain_two_epoch_training",
+      "base_benchmark_evaluation"
+    ],
+    "regression_tests_passed": true
+  },
+  "not_run": [
+    "Fresh virtualenv installation from the package indexes",
+    "End-to-end fresh download of both model snapshots and all legacy training raw sources",
+    "Four-GPU full-model preflight",
+    "New end-to-end training",
+    "New model-generated benchmark evaluation"
+  ],
+  "commands": [
+    "python reproduce.py prepare-data",
+    "python reproduce.py cpu-check --output .local/cpu-check-final",
+    "python reproduce.py doctor",
+    "python reproduce.py prepare-benchmarks --raw artifacts/raw-benchmarks --suite .local/benchmark_rebuild",
+    "python reproduce.py score --suite .local/benchmark_rebuild --accept",
+    "python reproduce.py restore-data --source /path/to/data-v1 --groups metadata benchmark_images",
+    "python reproduce.py test",
+    "python reproduce.py train --dry-run",
+    "python reproduce.py plain --dry-run",
+    "python reproduce.py evaluate --mode base --output results/base --dry-run"
+  ]
+}
