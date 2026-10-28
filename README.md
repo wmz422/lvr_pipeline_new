@@ -43,6 +43,7 @@ Git 保存代码、配方、模型版本、原始来源和逐文件校验清单�
 Plain 的实测 token 长度清单包含路径指纹；`prepare-data` 先验证历史指纹，再仅重新绑定新目录，所有长度值保持不变。
 本地交付的数据包已生成；**尚未上传到公共托管服务，没有假设存在的下载地址**。
 如将这些同名 tar 文件上传至可访问目录，可直接把该目录 HTTPS URL 传给 `--source`。
+`artifacts/qwen25-flow-repro.bundle` 是可直接 `git clone` 的代码仓库备份；迁移时同时携带 `artifacts/data-v1/`。
 
 数据包不含模型权重、训练 checkpoint、RGB 重建缓存或约 319 GiB 的离线 VAE 缓存。
 这几项分别由固定版本下载、训练和预处理生成。缓存身份包含路径与实现哈希，换目录后应重新生成，不复用旧实验的 cache plan。
@@ -162,6 +163,9 @@ BLINK 取 14 个任务宏平均，Mentis 取 5 个任务均值；MathVista 使�
 
 ## 公共原始数据下载与再处理
 
+下面是只恢复元数据、从公共源重建图像的替代流程。完整恢复 `data-v1` 后无需再下载原图；
+训练原图下载器使用单独的原始文件目录布局，请在仅恢复元数据的新 checkout 中执行。
+
 ```bash
 # 查看来源与固定版本，不下载。
 .venv/bin/python reproduce.py download-models --list
@@ -169,7 +173,9 @@ BLINK 取 14 个任务宏平均，Mentis 取 5 个任务均值；MathVista 使�
 .venv/bin/python reproduce.py download-raw --kind benchmarks --list
 
 # 训练原图按已冻结的 image_manifest 从上游恢复；审核后的 reasoning 数据仍使用 data-v1。
+.venv/bin/python reproduce.py restore-data --source /path/to/data-v1 --groups metadata reasoning_images
 .venv/bin/python reproduce.py download-raw --kind training
+.venv/bin/python reproduce.py verify-data --groups legacy_images
 
 # 只从 data-v1 恢复元数据后，可以从上游重建 benchmark 图像。
 .venv/bin/python reproduce.py restore-data --source /path/to/data-v1 --groups metadata
@@ -194,4 +200,5 @@ benchmark 上游路径、revision、SHA256/Git blob hash 在 `manifests/benchmar
 
 整理时不占用训练中的 GPU。CPU 测试与数据/协议校验不能替代新环境上的真实四卡预检，
 也不保证不同 CUDA、硬件或分布式归约顺序下逐位相同。训练运行中的旧目录没有改动。
+本次验证使用了版本匹配的已安装环境；尚未执行全新虚拟环境的联网安装，也未重跑完整 GPU 训练或模型推理评测。
 模型与数据沿用各自上游条款；本地整理不等于已公开发布，项目代码授权说明见 [NOTICE](NOTICE.md)。

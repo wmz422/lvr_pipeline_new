@@ -1,0 +1,150 @@
+{
+  "schema": "qwen25-data-release-v1",
+  "files_manifest": "data_release.files.jsonl.gz",
+  "files_manifest_sha256": "847304f40bcbbbb49347ed92e6ab9c76a670439f6c43349408b59aa1cead96e6",
+  "file_count": 334540,
+  "payload_bytes": 40904275724,
+  "archives": [
+    {
+      "file": "benchmark_images-000.tar",
+      "bytes": 2153072640,
+      "sha256": "f12af38a58ed18b248c6531ef78ded8d1c2f1ca0cca1625e86ed111b9dbddcfd",
+      "group": "benchmark_images",
+      "members": 8243
+    },
+    {
+      "file": "benchmark_images-001.tar",
+      "bytes": 1605314560,
+      "sha256": "4fd2fd699d088e489bcf355ac8edd82791f90e26425fa73545b0b55115b19348",
+      "group": "benchmark_images",
+      "members": 6165
+    },
+    {
+      "file": "legacy_images-002.tar",
+      "bytes": 2158561280,
+      "sha256": "9e493cd61f89bc5ee8fe5ff8bfe7d92530c32d9f97602df0f1a837c00bcf800f",
+      "group": "legacy_images",
+      "members": 14540
+    },
+    {
+      "file": "legacy_images-003.tar",
+      "bytes": 2157035520,
+      "sha256": "d5371926a4e67c6f0e3b072b9aacb24fbd7d18c3ec519a4ea8a79f1f426c3636",
+      "group": "legacy_images",
+      "members": 12554
+    },
+    {
+      "file": "legacy_images-004.tar",
+      "bytes": 2157312000,
+      "sha256": "4a8ebc3dffaa2e9186110df7164cd0f5b2efc1893207f66bb72db76b13e6f092",
+      "group": "legacy_images",
+      "members": 12921
+    },
+    {
+      "file": "legacy_images-005.tar",
+      "bytes": 2160179200,
+      "sha256": "9f26d857100ffdca3967e8fe679e38ddf86ec5c86c23f854c3f89142eb02e72f",
+      "group": "legacy_images",
+      "members": 16599
+    },
+    {
+      "file": "legacy_images-006.tar",
+      "bytes": 2159001600,
+      "sha256": "b3be282510079f9d834357bff42c0c4d9ec8939617759812f190a8c6b89489d9",
+      "group": "legacy_images",
+      "members": 15024
+    },
+    {
+      "file": "legacy_images-007.tar",
+      "bytes": 2156298240,
+      "sha256": "c1a1e51a4cb78bb89a9dafd1dad99c9d00b06a3706a808b1cf9b89c607f26cc3",
+      "group": "legacy_images",
+      "members": 11704
+    },
+    {
+      "file": "legacy_images-008.tar",
+      "bytes": 2162472960,
+      "sha256": "49e6d08ee8bf0bbaf4f7c8df3a9951ad556f39323e5c9b66bf89fe8600c3b1e9",
+      "group": "legacy_images",
+      "members": 19573
+    },
+    {
+      "file": "legacy_images-009.tar",
+      "bytes": 2052628480,
+      "sha256": "4f6910e2df64c19a9b3f2991a866a8d4fad1a924db23b304e90449241796744a",
+      "group": "legacy_images",
+      "members": 21223
+    },
+    {
+      "file": "metadata-010.tar",
+      "bytes": 1469644800,
+      "sha256": "443b565e0014f165bd3b472b1302f2734f655a935a9c79d5f9290141fc9dd6e0",
+      "group": "metadata",
+      "members": 141
+    },
+    {
+      "file": "reasoning_images-011.tar",
+      "bytes": 2164776960,
+      "sha256": "7cdf73a9e3fad3f0212d22d354d2a196cf161ac7504e9e3aba026f7a25d49847",
+      "group": "reasoning_images",
+      "members": 22504
+    },
+    {
+      "file": "reasoning_images-012.tar",
+      "bytes": 2164787200,
+      "sha256": "8f321e3931283ef8c449d100a1d74fc726903554784b531130ab34ea469c75e1",
+      "group": "reasoning_images",
+      "members": 22630
+    },
+    {
+      "file": "reasoning_images-013.tar",
+      "bytes": 2164428800,
+      "sha256": "7f34fed52d668e2b7d9f478d12a77e4135431b4116141b790d8899fff275d9d8",
+      "group": "reasoning_images",
+      "members": 22544
+    },
+    {
+      "file": "reasoning_images-014.tar",
+      "bytes": 2164940800,
+      "sha256": "2800fd8506baf2e83130e16d74a0f5a25f8435cd2b838db38f1cf8870a90b3dc",
+      "group": "reasoning_images",
+      "members": 22735
+    },
+    {
+      "file": "reasoning_images-015.tar",
+      "bytes": 2164920320,
+      "sha256": "74fee7e0865d47752ec6e42654af4a59c4ade87f86604514a3ea40edc06cf046",
+      "group": "reasoning_images",
+      "members": 22792
+    },
+    {
+      "file": "reasoning_images-016.tar",
+      "bytes": 2164561920,
+      "sha256": "54d13378dd2dafeb1b0623460d8bdec6517812ae1ab70e4a8989e7f17383749f",
+      "group": "reasoning_images",
+      "members": 22306
+    },
+    {
+      "file": "reasoning_images-017.tar",
+      "bytes": 2164377600,
+      "sha256": "2e1fa47d27009d06af8e2bdaceaa4ae917409a6a1a9b10a2233c00f924f59fee",
+      "group": "reasoning_images",
+      "members": 22394
+    },
+    {
+      "file": "reasoning_images-018.tar",
+      "bytes": 2164582400,
+      "sha256": "60c5dfd034a2525dee8e22833c9ca5a02bce5772d8b06cd52e09ec2cc418eda9",
+      "group": "reasoning_images",
+      "members": 22585
+    },
+    {
+      "file": "reasoning_images-019.tar",
+      "bytes": 1452359680,
+      "sha256": "46ac8da134ae05f47c1166e6ff0ba56dfe2483b627bdf13860ba70d227922d40",
+      "group": "reasoning_images",
+      "members": 15363
+    }
+  ],
+  "public_base_url": null
+}
