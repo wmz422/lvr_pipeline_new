@@ -9,12 +9,29 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-from release import pack, load_lock, unpack, safe_target, fetch_archive, sha256
+from release import pack, load_lock, unpack, safe_target, fetch_archive, sha256, restore_source
 from download_raw import check
 from prepare_benchmarks import binary_values
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_published_download_default_is_bound_to_exact_release(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            lock = root / 'lock.json'
+            lock.write_text('frozen lock bytes')
+            publication = root / 'publication.json'
+            self.assertEqual(restore_source('/local/release', lock, publication), '/local/release')
+            with self.assertRaisesRegex(ValueError, 'No published'):
+                restore_source(None, lock, publication)
+            url = 'https://huggingface.co/datasets/example/data/resolve/fixed_commit'
+            publication.write_text(json.dumps({'huggingface': {'status': 'complete',
+                'release_sha256': sha256(lock), 'download_base_url': url}}))
+            self.assertEqual(restore_source(None, lock, publication), url)
+            lock.write_text('a different release')
+            with self.assertRaisesRegex(ValueError, 'does not match'):
+                restore_source(None, lock, publication)
+
     def test_pack_restore_relocation_and_corruption(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

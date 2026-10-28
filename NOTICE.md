@@ -11,5 +11,6 @@ No new license is granted by assembling this repository.
 - Existing LVR component attribution: `lvr_pipeline_new/NOTICE.md`; original third-party license files are preserved.
 - Benchmark scorer source files and the licenses recorded by the original accepted suite travel in the metadata release.
 
-The data release is a local reproducibility artifact. It has not been uploaded or publicly redistributed.
+The data release is distributed separately at https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1.
+The README and publication manifest record upload progress and the verified immutable snapshot.
 Upstream data and model terms remain applicable when transferring or publishing artifacts.

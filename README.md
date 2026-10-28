@@ -41,9 +41,10 @@ Git 保存代码、配方、模型版本、原始来源和逐文件校验清单�
 精确数据复现必须取得配套数据包。当前数据经过人工审核和历史标注，重新下载公共数据并重新生成描述不能保证相同样本集合。
 冻结版本保留原始记录与顺序；本次训练不消费其中的 description 字段。
 Plain 的实测 token 长度清单包含路径指纹；`prepare-data` 先验证历史指纹，再仅重新绑定新目录，所有长度值保持不变。
-本地交付的数据包已生成；**尚未上传到公共托管服务，没有假设存在的下载地址**。
-如将这些同名 tar 文件上传至可访问目录，可直接把该目录 HTTPS URL 传给 `--source`。
-`artifacts/qwen25-flow-repro.bundle` 是可直接 `git clone` 的代码仓库备份；迁移时同时携带 `artifacts/data-v1/`。
+公开数据集：[Wing22/qwen25-flow-repro-data-v1](https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1)。
+**当前正在上传**；完成远端校验后，固定的数据集 commit 与下载地址会写入 `manifests/publication.json`。
+数据上传完成后可以使用下面的 HTTPS 地址恢复，也可以用 `--source /path/to/data-v1` 指向本地数据包。
+本机另有 `artifacts/qwen25-flow-repro.bundle` 代码仓库备份；从 GitHub 克隆时无需该文件。
 
 数据包不含模型权重、训练 checkpoint、RGB 重建缓存或约 319 GiB 的离线 VAE 缓存。
 这几项分别由固定版本下载、训练和预处理生成。缓存身份包含路径与实现哈希，换目录后应重新生成，不复用旧实验的 cache plan。
@@ -55,11 +56,15 @@ Linux；训练 Python 3.12，几何评分 Python 3.13。复现参考平台为 4 
 Teacher 单个原生 checkpoint 约 163 GiB；训练/导出与预检还会额外占空间。
 
 ```bash
+git clone --branch repro/qwen25-flow-20261028 --single-branch \
+  https://github.com/wmz422/lvr_pipeline_new.git qwen25-flow-repro
 cd qwen25-flow-repro
 bash tools/setup.sh
 
-# 从交付的同名数据包目录恢复；支持本地目录或 HTTPS URL。
-.venv/bin/python reproduce.py restore-data --source /path/to/data-v1
+# 数据上传完成后，从公开数据集下载并校验、恢复。
+.venv/bin/python reproduce.py restore-data \
+  --source https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1/resolve/main
+# 固定版本写入 publication.json 后，也可以省略 --source 使用该固定版本。
 
 # 按锁定 revision 下载两个模型，并校验所有权重/配置文件。
 .venv/bin/python reproduce.py download-models

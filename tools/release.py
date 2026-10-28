@@ -203,6 +203,17 @@ def load_lock(path):
     return lock, rows
 
 
+def restore_source(source, lock_path, publication_path=ROOT / 'manifests/publication.json'):
+    if source:
+        return source
+    if not publication_path.is_file():
+        raise ValueError('No published snapshot is recorded; pass --source /path/to/data-v1')
+    publication = json.loads(publication_path.read_text())['huggingface']
+    if publication['status'] != 'complete' or publication['release_sha256'] != sha256(lock_path):
+        raise ValueError('Published snapshot does not match this release lock; pass an explicit --source')
+    return publication['download_base_url']
+
+
 def fetch_archive(source, spec, cache):
     target = safe_target(cache, spec['file'])
     if target.is_file():
@@ -279,7 +290,7 @@ def main():
         p.add_argument('--root', type=Path, default=ROOT)
         p.add_argument('--groups', nargs='+')
         if action == 'restore':
-            p.add_argument('--source', required=True, help='Local release directory or HTTPS base URL')
+            p.add_argument('--source', help='Local directory or HTTPS URL; defaults to the verified published snapshot')
     args = parser.parse_args()
     if args.action == 'pack':
         if args.rate_mib < 0 or args.shard_mib < 1 or args.workers < 1:
@@ -294,11 +305,12 @@ def main():
             parser.error(f'Unknown groups: {sorted(unknown)}')
         rows = [r for r in rows if r['group'] in args.groups]
     if args.action == 'restore':
+        source = restore_source(args.source, args.lock)
         for spec in lock['archives']:
             entries = [r for r in rows if r['archive'] == spec['file']]
             if not entries:
                 continue
-            path = fetch_archive(args.source, spec, args.root / 'artifacts/downloads')
+            path = fetch_archive(source, spec, args.root / 'artifacts/downloads')
             unpack(path, entries, args.root)
             print('RESTORED', spec['file'], flush=True)
     else:
