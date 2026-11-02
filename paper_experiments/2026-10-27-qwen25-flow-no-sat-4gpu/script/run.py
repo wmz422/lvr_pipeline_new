@@ -118,12 +118,17 @@ def load_inputs(args):
             or args.defaults["global_batch_size"] != 128):
         raise ValueError("Experiment pixel/global-batch settings must match the Plain reference")
     model = Path(data["processor_name_or_path"])
-    if json.loads((model / "config.json").read_text())["model_type"] != "qwen2_5_vl":
-        raise ValueError("Expected Qwen2.5-VL")
+    model_type = json.loads((model / "config.json").read_text())["model_type"]
+    model_locks = {"qwen2_5_vl": "qwen_model.json", "qwen3_vl": "qwen3_model.json"}
+    if model_type not in model_locks:
+        raise ValueError(f"Unsupported Qwen VL backbone: {model_type}")
+    expected = json.loads((WORKSPACE / "manifests" / model_locks[model_type]).read_text())
     source = json.loads((model / "source.json").read_text())
-    if (source["repository"] != "Qwen/Qwen2.5-VL-7B-Instruct" or source["status"] != "complete"
-            or source["revision"] != "cc594898137f460bfe9f0759e9844b3ce807cfb5"):
-        raise ValueError("Qwen2.5-VL-7B-Instruct source/revision differs from Plain")
+    if (source != expected or source["status"] != "complete"):
+        raise ValueError("Qwen source/revision differs from the pinned model manifest")
+    if any(plain["model"][key] != str(model)
+           for key in ("encoder_model_name_or_path", "qa_model_name_or_path")):
+        raise ValueError("Encoder, QA and processor must use the same pinned backbone")
     model_files = {}
     for item in source["verified_files"]:
         path = model / item["name"]
@@ -159,6 +164,7 @@ def load_inputs(args):
     return plain, counts, settings, {"plain_recipe": str(reference), "plain_recipe_sha256": digest_file(reference),
         "splits": configs, "counts": counts, "flow_model_revision": lock["revision"],
         "model_source_sha256": digest_file(model / "source.json"), "model_files": model_files,
+        "model_repository": source["repository"], "model_revision": source["revision"],
         "flow_model_lock_sha256": digest_file(Path(args.defaults["flow_model"]) / "weights_lock.json"),
         "model_config_sha256": digest_file(model / "config.json"),
         "deepspeed_config_sha256": digest_file(trainer["strategy"]["init_args"]["config"])}
@@ -345,8 +351,11 @@ def make_plan(args, configs, steps, inputs, settings):
              FLOW / "scripts/export_teacher.py", *sorted((PROJECT / "src/lvr").rglob("*.py")),
              PROJECT / "scripts/reasoning_data/train_and_evaluate.py", PROJECT / "scripts/latent_prediction/run.py",
              PROJECT / "scripts/paper_benchmarks/evaluate.py"]
-    files += [WORKSPACE / "reproduce.py", WORKSPACE / "train_flow.sh", WORKSPACE / "tools/start_flow.py"]
-    return {"schema": "qwen25-no-sat-four-gpu-offline-vae-v2", "phases": list(PHASES),
+    files += [WORKSPACE / "reproduce.py", *sorted(WORKSPACE.glob("train*flow*.sh")),
+              *sorted((WORKSPACE / "tools").glob("*.py")),
+              WORKSPACE / "manifests/qwen_model.json", WORKSPACE / "manifests/qwen3_model.json"]
+    return {"schema": "qwen-vl-no-sat-flow-v3", "phases": list(PHASES),
+            "flow_loss_weight": configs["teacher_joint"]["model"]["flow_weight"],
             "execution": execution_settings(args),
             "hardware": hardware_summary(args, configs),
             "inputs": inputs, "recipes": configs, "optimizer_steps": steps,

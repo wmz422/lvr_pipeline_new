@@ -4,23 +4,27 @@ import json
 from pathlib import Path
 import sys
 
-from common import ROOT, EXPERIMENT, QWEN, FLUX, SUITE
+from common import (ROOT, EXPERIMENT, FLUX, SUITE, DEFAULT_OUTPUT, LOCAL_FLOW,
+                    LOCAL_REFERENCE, reference_recipe, flow_defaults)
 
 
 def configure(output=None):
     import yaml
-    output = Path(output or ROOT / 'runs/flow').expanduser().resolve()
+    output = Path(output or DEFAULT_OUTPUT).expanduser().resolve()
     directory = ROOT / '.local'
     directory.mkdir(exist_ok=True)
-    text = (ROOT / 'configs/plain_reference.yaml').read_text().replace('${REPO}', str(ROOT))
-    reference = directory / 'plain_reference.yaml'
+    reference = LOCAL_REFERENCE
+    text = (yaml.safe_dump(reference_recipe(), sort_keys=False) if reference.name != 'plain_reference.yaml'
+            else (ROOT / 'configs/plain_reference.yaml').read_text().replace('${REPO}', str(ROOT)))
+    if reference.exists() and reference.read_text() != text:
+        raise ValueError(f'Existing reference configuration differs: {reference}')
     reference.write_text(text)
-    defaults = yaml.safe_load((EXPERIMENT / 'configs/experiment.yaml').read_text())
+    defaults = flow_defaults()
     defaults.update(plain_recipe=str(reference), output=str(output),
                     flow_data=str(EXPERIMENT / 'data/reconstruction_2mp'),
                     flow_latents=str(EXPERIMENT / 'data/vae_latents_fp32'),
                     flow_model=str(FLUX), suite=str(SUITE))
-    target = directory / 'flow.yaml'
+    target = LOCAL_FLOW
     encoded = yaml.safe_dump(defaults, sort_keys=False)
     if target.exists() and target.read_text() != encoded:
         raise ValueError('Existing local configuration differs; use the runner --output flag for a new run')

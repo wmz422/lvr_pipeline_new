@@ -11,14 +11,40 @@ FLOW = ROOT / 'doc/flow_reconstruction_parallel_20261015'
 EXPERIMENT = ROOT / 'paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu'
 PLAIN = ROOT / 'paper_experiments/2026-10-27-qwen25-no-sat-4epoch'
 SUITE = ROOT / 'paper_experiments/2026-10-23-unified-benchmark/data'
-QWEN = ROOT / 'paper_experiments/models/Qwen2.5-VL-7B-Instruct'
+VARIANT = os.environ.get('LVR_FLOW_VARIANT', 'qwen25')
+if VARIANT not in ('qwen25', 'qwen3', 'qwen3-no-flow-loss'):
+    raise ValueError(f'Unknown LVR_FLOW_VARIANT: {VARIANT}')
+QWEN3 = VARIANT != 'qwen25'
+QWEN = ROOT / 'paper_experiments/models' / ('Qwen3-VL-4B-Instruct' if QWEN3 else 'Qwen2.5-VL-7B-Instruct')
+QWEN_LOCK = ROOT / 'manifests' / ('qwen3_model.json' if QWEN3 else 'qwen_model.json')
+LOCAL_FLOW = ROOT / '.local' / ('flow.yaml' if not QWEN3 else f'{VARIANT}.yaml')
+LOCAL_REFERENCE = ROOT / '.local' / ('plain_reference.yaml' if not QWEN3 else 'qwen3_reference.yaml')
+DEFAULT_OUTPUT = ROOT / 'runs' / ('flow' if not QWEN3 else ('qwen3-flow' if VARIANT == 'qwen3' else 'qwen3-no-flow-loss'))
+FLOW_WEIGHT = 0.0 if VARIANT == 'qwen3-no-flow-loss' else 0.1
 FLUX = FLOW / 'weights/FLUX.2-klein-base-4B'
+
+
+def reference_recipe():
+    """Change only backbone locations; the Flow builder removes Plain token lengths."""
+    import yaml
+    config = yaml.safe_load((ROOT / 'configs/plain_reference.yaml').read_text().replace('${REPO}', str(ROOT)))
+    config['model'].update(encoder_model_name_or_path=str(QWEN), qa_model_name_or_path=str(QWEN))
+    config['data']['processor_name_or_path'] = str(QWEN)
+    return config
+
+
+def flow_defaults():
+    import yaml
+    defaults = yaml.safe_load((EXPERIMENT / 'configs/experiment.yaml').read_text().replace('${REPO}', str(ROOT)))
+    defaults.update(plain_recipe=str(LOCAL_REFERENCE), output=str(DEFAULT_OUTPUT),
+                    flow_weight=FLOW_WEIGHT)
+    return defaults
 
 
 def environment(*, gpu=True):
     env = dict(os.environ)
     env.update(PYTHONPATH=os.pathsep.join(map(str, (EXPERIMENT, FLOW, PROJECT / 'src', PLAIN / 'script'))),
-               LVR_FLOW_CONFIG=str(ROOT / '.local/flow.yaml'),
+               LVR_FLOW_CONFIG=str(LOCAL_FLOW),
                LVR_SCORING_PYTHON=env.get('LVR_SCORING_PYTHON', str(ROOT / '.venv-score/bin/python')),
                SETUPTOOLS_USE_DISTUTILS='local', TOKENIZERS_PARALLELISM='false',
                HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', PYTHONUNBUFFERED='1')

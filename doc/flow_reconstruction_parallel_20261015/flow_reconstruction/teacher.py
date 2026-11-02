@@ -30,7 +30,7 @@ class FlowVisualBottleneck(VisualBottleneck):
         flow_args={key:arguments.pop(key) for key in list(arguments) if key.startswith('flow_')}
         if gaussian or reconstruction_weight or num_latents!=8 or latent_dim!=512:
             raise ValueError('Flow experiment uses deterministic eight-token latent and disables old reconstruction')
-        if not math.isfinite(flow_weight) or flow_weight<=0:raise ValueError('Specify a positive flow loss weight')
+        if not math.isfinite(flow_weight) or flow_weight<0:raise ValueError('Specify a finite nonnegative flow loss weight')
         if not flow_protocol_sha256:raise ValueError('Require a bound GT protocol')
         config=json.loads((Path(flow_model_path)/'transformer/config.json').read_text())
         if config['joint_attention_dim']!=7680:raise ValueError('Expected Klein Base 4B condition dimension')
@@ -110,7 +110,7 @@ class FlowVisualBottleneck(VisualBottleneck):
         if hp.get('flow_protocol_sha256')!=self.hparams.flow_protocol_sha256:
             raise ValueError('Teacher phase initialization must use this experiment GT protocol')
         for key in ('num_latents','latent_dim','gaussian','encoder_type','encoder_uses_question',
-                    'encoder_includes_original','flow_mapper_hidden_size'):
+                    'encoder_includes_original','flow_mapper_hidden_size','flow_weight'):
             if hp[key]!=self.hparams[key]:raise ValueError(f'Phase initialization differs: {key}')
         if ckpt.get('flow_metadata',{}).get('model_revision')!=MODEL_REVISION:
             raise ValueError('Frozen generator revision differs')
@@ -121,6 +121,7 @@ class FlowVisualBottleneck(VisualBottleneck):
 
     def on_save_checkpoint(self,checkpoint):
         checkpoint['flow_metadata']={'model_revision':MODEL_REVISION,
+            'flow_loss_weight':self.hparams.flow_weight,
             'gt_protocol_sha256':self.hparams.flow_protocol_sha256,
             'objective':'unweighted_standard_flow_matching','condition':'mapper_latent_only',
             'frozen_weights_external':True,'reference_inputs':'question_images_only',
@@ -130,3 +131,5 @@ class FlowVisualBottleneck(VisualBottleneck):
         info=checkpoint.get('flow_metadata',{})
         if info.get('model_revision')!=MODEL_REVISION or info.get('gt_protocol_sha256')!=self.hparams.flow_protocol_sha256:
             raise ValueError('Resume model/GT protocol mismatch')
+        if checkpoint['hyper_parameters']['flow_weight']!=self.hparams.flow_weight:
+            raise ValueError('Resume Flow loss weight mismatch')

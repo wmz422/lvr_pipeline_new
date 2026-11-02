@@ -8,7 +8,8 @@ from pathlib import Path
 import subprocess
 import sys
 
-from common import ROOT, PROJECT, EXPERIMENT, FLOW, QWEN, FLUX, SUITE, environment, write_json
+from common import (ROOT, PROJECT, EXPERIMENT, FLOW, QWEN, QWEN3, VARIANT, FLUX, SUITE,
+                    LOCAL_FLOW, environment, write_json)
 from release import sha256
 
 
@@ -54,32 +55,36 @@ def main():
                  'reasoning_val': len(read_records(PROJECT / 'data/processed/reasoning_v1/val'))}
         if sizes != {'legacy_train': 122706, 'reasoning_train': 49518, 'legacy_val': 1241, 'reasoning_val': 6330}:
             raise ValueError(f'Incorrect data counts: {sizes}')
-        from lvr.data.crop_qa import CropQADataset
-        from lvr.data.length_manifest import load_plain_qa_lengths
-        items = CropQADataset(CLEAN / 'sft/train', CLEAN / 'align/train').items
-        items += CropQADataset(NOSAT).items
-        lengths = load_plain_qa_lengths(ROOT / '.local/plain_qa_lengths.json.gz', items, QWEN, 2000000, 8192)
-        report['plain_length_binding'] = {'records': len(lengths), 'max_tokens': max(lengths), 'status': 'passed'}
-        del items, lengths
+        if not QWEN3:
+            from lvr.data.crop_qa import CropQADataset
+            from lvr.data.length_manifest import load_plain_qa_lengths
+            items = CropQADataset(CLEAN / 'sft/train', CLEAN / 'align/train').items
+            items += CropQADataset(NOSAT).items
+            lengths = load_plain_qa_lengths(ROOT / '.local/plain_qa_lengths.json.gz', items, QWEN, 2000000, 8192)
+            report['plain_length_binding'] = {'records': len(lengths), 'max_tokens': max(lengths), 'status': 'passed'}
+            del items, lengths
+        else:
+            report['plain_length_binding'] = 'Not used: Flow uses layout buckets, never Qwen2.5 token lengths'
         records, _, manifest = load_suite(SUITE)
-        config = yaml.safe_load((ROOT / '.local/flow.yaml').read_text())
+        config = yaml.safe_load(LOCAL_FLOW.read_text())
         for key in ('plain_recipe', 'flow_model', 'suite'):
             if not Path(config[key]).exists():
                 raise FileNotFoundError(config[key])
         from download_models import specs
         for name in ('qwen', 'flow'):
-            _, _, _, files, target, lock_name = specs(name)
+            lock_path, _, _, files, target, lock_name = specs(name)
             for relative, spec in files.items():
                 path = target / relative
                 if path.stat().st_size != spec['bytes']:
                     raise ValueError(f'Model file size mismatch: {path}')
                 if path.suffix != '.safetensors' and sha256(path) != spec['sha256']:
                     raise ValueError(f'Model config checksum mismatch: {path}')
-            if sha256(target / lock_name) != sha256(ROOT / 'manifests' / f'{name}_model.json'):
+            if sha256(target / lock_name) != sha256(lock_path):
                 raise ValueError(f'Model source lock differs: {target}')
         report.update(splits=sizes, benchmark_records=manifest['records'], benchmark_generations=len(records),
                       answer_parsing=answer_parsing_metadata(), model_check='all sizes + configuration hashes; download verifies all weight hashes')
-    write_json(ROOT / '.local/doctor.json', report)
+    report['variant'] = VARIANT
+    write_json(ROOT / '.local' / f'doctor_{VARIANT}.json', report)
     print(json.dumps(report, indent=2))
 
 

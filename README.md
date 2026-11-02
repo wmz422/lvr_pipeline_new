@@ -1,10 +1,71 @@
-# Qwen2.5 Plain SFT / Flow 可复现实验
+# Qwen2.5 / Qwen3-VL Flow 可复现实验
 
 本仓库整理了 2026-10-28 正在使用的训练、离线 VAE 缓存和统一评测流程。
 默认 Flow 配方对应本次四卡实验；同时提供从同一基座开始的两轮 Plain SFT 入口。
 代码是独立副本，不会读写原实验的训练目录。
 
+## Qwen3-VL-4B-Instruct 与去 Flow loss 消融
+
+新增两个完整实验入口。Qwen3 使用官方 `Qwen/Qwen3-VL-4B-Instruct`，固定 revision
+`ebb281ec70b05090aa6165b016eac8ec08e71b17`；12 个配置、tokenizer 和权重文件的 SHA256
+锁定在 `manifests/qwen3_model.json`。训练与推理均使用 Qwen3 原生 processor。
+
+```bash
+# Qwen3 + Flow：准备数据、缓存、训练三阶段、逐阶段验证、最终完整评测。
+bash train_qwen3_flow.sh
+
+# Qwen3 去掉 Flow loss：从同一 Instruct 基座重新开始同样的三阶段实验。
+bash train_qwen3_no_flow_loss.sh
+```
+
+| 入口 | Teacher 目标 | 默认输出 |
+| --- | --- | --- |
+| `train_qwen3_flow.sh` | QA CE + 0.1 × Flow MSE | `runs/qwen3-flow` |
+| `train_qwen3_no_flow_loss.sh` | QA CE + 0 × Flow MSE | `runs/qwen3-no-flow-loss` |
+| `train_flow.sh` | 原 Qwen2.5 配方 | `runs/flow` |
+
+两项新实验沿用下面冻结的 dataset、样本顺序、去 SAT 筛选、benchmark、分辨率预算、
+BF16、seed、学习率、冻结策略、8 × 512 latent、batch、梯度缩放、ZeRO/offload 和 checkpoint 策略。
+Teacher / Warmup / Joint 仍为 **1,346 / 200 / 1,346 updates**，全局 batch 为 **128**，
+epoch 尾批仍为 64 条。Warmup 和 Joint 的 latent alignment、QA 目标均保持原值。
+Qwen2.5 的 Plain token 长度清单不参与 Qwen3 Flow；Flow 继续使用原来的 layout 分桶。
+
+消融与完整 Qwen3 配方的有效差异只有 Teacher 的 `flow_weight: 0.1 → 0.0` 和各自输出路径。
+消融仍计算 Flow MSE 作为诊断，保留相同重建输入、离线 VAE 缓存、随机数消耗和优化器参数分组；
+该项对训练梯度的贡献为零，因此仍需要 FLUX 权重与缓存，并不减少这条分支的计算开销。
+两项实验都从 Instruct 权重独立训练 Teacher，再用各自 Teacher 初始化 Warmup / Joint。
+配置、模型锁和损失权重写入运行绑定；跨变体恢复会被拒绝。
+
+每阶段保留验证，Joint 完成后自动用该实验最终 checkpoint 跑相同的 **11 项 benchmark**，
+检查 9,957 条记录、10,107 次生成及完整评分，输出 `evaluation/predicted/summary.json`
+和 `main_table.md`。默认命令包含最终测试。
+
+两个新脚本接受下方 `train_flow.sh` 的相同参数，包括 `--gpus`、各阶段 batch、ZeRO、
+offload、`--output`、`--resume` 和独立 `--preflight`。例如：
+
+```bash
+bash train_qwen3_flow.sh --dry-run
+bash train_qwen3_no_flow_loss.sh --dry-run
+bash train_qwen3_flow.sh --output runs/qwen3-flow --resume
+bash train_qwen3_no_flow_loss.sh --output runs/qwen3-no-flow-loss --resume
+
+# 已完成训练后，只补跑该变体最终评测。
+bash train_qwen3_no_flow_loss.sh --eval-only --resume
+
+# 手动准备或检查时，用同一变体环境选择对应模型和配置。
+LVR_FLOW_VARIANT=qwen3 .venv/bin/python reproduce.py configure
+LVR_FLOW_VARIANT=qwen3 .venv/bin/python reproduce.py download-models
+LVR_FLOW_VARIANT=qwen3 .venv/bin/python reproduce.py cpu-check --output runs/qwen3-cpu-check
+# 消融对应 LVR_FLOW_VARIANT=qwen3-no-flow-loss。
+```
+
+首次执行会按下面相同方式安装环境并恢复固定数据；已配置旧版环境也可以直接运行新脚本。
+两项新实验分别使用 `.local/qwen3.yaml` 和 `.local/qwen3-no-flow-loss.yaml`，不会覆盖旧配方。
+本地验证范围和实际结果见 [Qwen3 验证记录](docs/qwen3_experiments.md)。
+
 ## 固定的实验条件
+
+下表记录原 Qwen2.5 实验；上面的 Qwen3 入口仅替换基座，消融另将 Flow loss 权重置零。
 
 | 项目 | 配置 |
 | --- | --- |

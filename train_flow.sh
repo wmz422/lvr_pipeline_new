@@ -5,6 +5,7 @@ REPRO_DRY_RUN=0
 for REPRO_ARG in "$@"; do
   case "$REPRO_ARG" in
     --help|-h)
+      printf 'Entry: %s; variant: %s\n' "${LVR_LAUNCHER_NAME:-train_flow.sh}" "${LVR_FLOW_VARIANT:-qwen25}"
       cat <<'HELP'
 Usage: bash train_flow.sh [options]
 
@@ -26,7 +27,7 @@ Hardware settings are manual; no configuration search or automatic batch changes
   --parameter-offload {none,cpu}    Parameter offload; CPU requires all ZeRO-3
   --flow-generator-batch-size N    Frozen Flow sub-batch (default: 2)
   --eval-gpus N                    Defaults to min(--gpus, 8)
-  --output PATH                    New run directory (default: runs/flow)
+  --output PATH                    New run directory (default depends on variant)
   --resume                         Resume this output with identical settings
   --preflight                      Opt in to a separate four-update GPU smoke check
   --skip-bootstrap                 Use data/models already prepared in this checkout

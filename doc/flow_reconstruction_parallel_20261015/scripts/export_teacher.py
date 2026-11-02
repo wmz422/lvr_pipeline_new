@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 import torch
 PACKAGE=Path(__file__).resolve().parents[1]
-ROOT=Path('/workspace/wmz/workspace/lvr_pipeline_new')
+ROOT=PACKAGE.parents[1]/'lvr_pipeline_new'
 sys.path[:0]=[str(PACKAGE),str(ROOT/'src')]
 from lvr.models.visual_bottleneck import VisualBottleneck,_read_checkpoint
 

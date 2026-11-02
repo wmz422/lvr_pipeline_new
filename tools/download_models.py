@@ -5,12 +5,12 @@ from pathlib import Path
 import shutil
 import os
 
-from common import ROOT, QWEN, FLUX
+from common import ROOT, QWEN, QWEN_LOCK, FLUX
 from release import sha256
 
 
 def specs(name):
-    lock_path = ROOT / 'manifests' / f'{name}_model.json'
+    lock_path = QWEN_LOCK if name == 'qwen' else ROOT / 'manifests/flow_model.json'
     lock = json.loads(lock_path.read_text())
     if name == 'qwen':
         return lock_path, lock['repository'], lock['revision'], {

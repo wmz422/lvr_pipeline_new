@@ -1,0 +1,221 @@
+{
+  "schema": "qwen3-flow-experiments-verification-v1",
+  "verified_at_utc": "2026-11-02T11:37:55.212418+00:00",
+  "base_commit": "8e03586acfdf6ba4cdd959b25f24a78c6daca4d1",
+  "status": "passed",
+  "entries": {
+    "train_qwen3_flow.sh": {
+      "variant": "qwen3",
+      "flow_loss_weight": 0.1,
+      "output": "runs/qwen3-flow"
+    },
+    "train_qwen3_no_flow_loss.sh": {
+      "variant": "qwen3-no-flow-loss",
+      "flow_loss_weight": 0.0,
+      "output": "runs/qwen3-no-flow-loss"
+    }
+  },
+  "base_model": {
+    "repository": "Qwen/Qwen3-VL-4B-Instruct",
+    "revision": "ebb281ec70b05090aa6165b016eac8ec08e71b17",
+    "verified_files": 12,
+    "manifest_sha256": "aad5ba32ee4735ffadbbe2a7766986181ae6481b498dc14dac140cd26c7382e3",
+    "upstream_checks": "Both local weight SHA256 values match pinned Hugging Face LFS metadata; all other files match pinned Git blob hashes"
+  },
+  "recipe_parity": "Qwen3 changes only backbone paths from the frozen Qwen2.5 recipes; ablation additionally changes only Teacher flow_weight to zero and run output paths",
+  "optimizer_steps": {
+    "teacher_joint": 1346,
+    "warmup": 200,
+    "joint": 1346
+  },
+  "global_batch_size": 128,
+  "epoch_tail_global_batch": 64,
+  "ablation_execution": "Compute the same diagnostic Flow MSE and multiply by zero; keep cache inputs, RNG calls, mapper parameters and optimizer groups",
+  "final_evaluation": "Both default entries retain per-stage validation and full 11-benchmark predicted evaluation and scoring after Joint",
+  "regression_tests": {
+    "discovered": 100,
+    "passed": 99,
+    "skipped": 1,
+    "skip_reason": "Existing test_all_official_answer_roundtrip: Local generated fixtures unavailable",
+    "suites": {
+      "packaging_hardware_profiles": 22,
+      "native_flow_parallel": 4,
+      "flow_training_storage": 27,
+      "plain_continuation": 3,
+      "model_scoring": 44
+    },
+    "log_sha256": "51d41a971c96227b489964e85e9ae644304c50b3f619744f35158174a8aee741"
+  },
+  "tiny_qwen3_flux_cpu_checks": {
+    "tests": 3,
+    "passed": 3,
+    "scope": [
+      "Real Qwen3 and Flux backpropagation; zero Flow contribution in ablation; frozen generator",
+      "Both variants: Teacher optimizer update and validation -> export -> Warmup update -> Joint update -> validation -> checkpoint reload -> greedy generation",
+      "Reject negative or nonfinite Flow weights and cross-variant teacher checkpoint resume"
+    ],
+    "log_sha256": "c4dbd2a796804753ef590e59f78444063501839ffbb67bc1feb5c2b3c4824846"
+  },
+  "real_cpu_pipeline_checks": {
+    "qwen3": {
+      "status": "passed",
+      "report_sha256": "c29a5fe37edbb1c004fd9eb753f788890a0ec9efd4913f1ebf9cdb4429b3e9a8",
+      "gpu_started": false,
+      "full_model_instantiated": false,
+      "flow_loss_weight": 0.1,
+      "recipe_variants": 12,
+      "real_processor_samples": 35,
+      "data_counts": {
+        "train": 172224,
+        "val": 7571
+      },
+      "datamodules": [
+        {
+          "module": "FlowDataModule",
+          "train_ids": [
+            "images/original/TreeVGR-RL-37K/1568.jpg:1568",
+            "images/original/TreeVGR-RL-37K/7896.jpg:7896"
+          ],
+          "validation_ids": [
+            "images/original/TreeVGR-RL-37K/10456.jpg:10456"
+          ],
+          "passed": true,
+          "qa_original_pixels": 2000000,
+          "cpu_probe_flow_original_pixels": 3072
+        },
+        {
+          "module": "StudentDataModule",
+          "train_ids": [
+            "mentis_form-board/930202601",
+            "images/original/TreeVGR-RL-37K/1568.jpg:1568"
+          ],
+          "validation_ids": [
+            "images/original/TreeVGR-RL-37K/10456.jpg:10456"
+          ],
+          "passed": true,
+          "qa_original_pixels": 2000000,
+          "cpu_probe_flow_original_pixels": 3072
+        }
+      ],
+      "benchmark_records": 9957,
+      "benchmark_generations": 10107,
+      "benchmark_inference": "dry-run only"
+    },
+    "qwen3-no-flow-loss": {
+      "status": "passed",
+      "report_sha256": "2c9345d21b3bf267afd8e9ad083c02d056284b151544dc837737814e7a8da1e0",
+      "gpu_started": false,
+      "full_model_instantiated": false,
+      "flow_loss_weight": 0.0,
+      "recipe_variants": 12,
+      "real_processor_samples": 35,
+      "data_counts": {
+        "train": 172224,
+        "val": 7571
+      },
+      "datamodules": [
+        {
+          "module": "FlowDataModule",
+          "train_ids": [
+            "images/original/TreeVGR-RL-37K/1568.jpg:1568",
+            "images/original/TreeVGR-RL-37K/7896.jpg:7896"
+          ],
+          "validation_ids": [
+            "images/original/TreeVGR-RL-37K/10456.jpg:10456"
+          ],
+          "passed": true,
+          "qa_original_pixels": 2000000,
+          "cpu_probe_flow_original_pixels": 3072
+        },
+        {
+          "module": "StudentDataModule",
+          "train_ids": [
+            "mentis_form-board/930202601",
+            "images/original/TreeVGR-RL-37K/1568.jpg:1568"
+          ],
+          "validation_ids": [
+            "images/original/TreeVGR-RL-37K/10456.jpg:10456"
+          ],
+          "passed": true,
+          "qa_original_pixels": 2000000,
+          "cpu_probe_flow_original_pixels": 3072
+        }
+      ],
+      "benchmark_records": 9957,
+      "benchmark_generations": 10107,
+      "benchmark_inference": "dry-run only"
+    }
+  },
+  "cold_checkout": {
+    "status": "passed",
+    "fresh_checkout_without_data_models_or_config": true,
+    "launched_from": "/tmp",
+    "entries": {
+      "train_qwen3_flow.sh": {
+        "flow_loss_weight": 0.1,
+        "no_downloads": true,
+        "gpu_started": false,
+        "no_local_config_created": true,
+        "steps": {
+          "teacher_joint": 1346,
+          "warmup": 200,
+          "joint": 1346
+        }
+      },
+      "train_qwen3_no_flow_loss.sh": {
+        "flow_loss_weight": 0.0,
+        "no_downloads": true,
+        "gpu_started": false,
+        "no_local_config_created": true,
+        "steps": {
+          "teacher_joint": 1346,
+          "warmup": 200,
+          "joint": 1346
+        }
+      }
+    },
+    "report_sha256": "19df470253f718d6ecf16c4ee56b4b6ad47fc10cd3ee14c486e31520b7f3cb90"
+  },
+  "doctor": {
+    "status": "passed",
+    "training_and_scoring_versions": "match pinned manifests",
+    "report_sha256": "097d2517d3e85f9b3fc45703a4e11cc4245c4fb7cebd7b9fcf92d4c7cbe23ca9",
+    "benchmark_records": 9957,
+    "benchmark_generations": 10107
+  },
+  "unchanged_reference_inputs_sha256": {
+    "manifests/qwen_model.json": "53bd28d084b41090eed94e0fdeac3357c577fb1b40aa27add3ed782ea840c7b6",
+    "manifests/flow_model.json": "946054c3b85b108472c1881325681023fa73de11034a1c1b5f48bb6ca27fa6bb",
+    "manifests/training_data.json": "4c2d5cc5e7a655ecdae1a6cbf9187100f78b0bf330c76fec0a1fe89cd458e937",
+    "manifests/data_release.json": "3f010350069c1466c6409d34ad34552f2fddd22ab7e31f3749c177a1357318fa",
+    "manifests/benchmark_downloads.json": "357357f92745d546d7cf91fd03038d8b9ef96b68ca079560f1725726d336bd53",
+    "manifests/reference_recipes.json": "cb9b0686ee3f0b9a80620910f3304c306b44ab78f64339f3e315acd82683e571",
+    "configs/plain_reference.yaml": "6122a9b5f27419fc131b3078c70d571e3e869375f0ae6c849670cb365d1edcd1",
+    "paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu/configs/experiment.yaml": "25989e1956d015a28ae73eeb6a792fd448c6cf1fe51563a810ea39db5bbd41b7",
+    "paper_experiments/2026-10-23-unified-benchmark/configs/answer_parsing.json": "26562d6a533384b11f20e9b958b392ed89de7f62fde703998d8454ece55ede14",
+    "paper_experiments/2026-10-23-unified-benchmark/configs/protocol.json": "a02bb402462202a6e9ac8e9203331208a00800d9cffa70eb71d4c7ab4d6b11d9"
+  },
+  "tested_code_sha256": {
+    "doc/flow_reconstruction_parallel_20261015/flow_reconstruction/teacher.py": "7ce2941c85c4163c43f5b167abd3c952d45918e398c9f8d8daec770878a87070",
+    "doc/flow_reconstruction_parallel_20261015/scripts/export_teacher.py": "d59a8216da192c6817c1c026bfbe88b9865191b98f00c1fd82a501350c267738",
+    "paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu/script/check_cpu.py": "c569b204286c067737c0154fdaa3103d46e21c8d7d541201f953b358be689579",
+    "paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu/script/run.py": "0cb3a745b329c5048f64b91796a67596602cbf094009c655c74eb0bc0ec38feb",
+    "paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu/tests/test_qwen3_training.py": "ec6dfb0cef8d8231a25b6dfdcb9b4c6703b095cf525b2bdd61b9104df068ae46",
+    "reproduce.py": "fc8b82dc52d787a060c8f8d1347135285665e4792013707e1571131e4275f909",
+    "tests/test_qwen3_profiles.py": "0254ec3b5b3063545781b79e49b4152f972eca6547c8464bbe4a623df5ec5d37",
+    "tools/common.py": "6b80a7c42ba1cd35653fc71e4626b54040a8865d1901858e6688353aea463311",
+    "tools/configure.py": "003402522d9014b2882410789ee833a2fa8ce99c8f2ee1acff48ba7999eb2034",
+    "tools/doctor.py": "97387808886ae70e0fc1b53d290967fbf0347cd21f1dbd93f287f9d7030076a7",
+    "tools/download_models.py": "4ee9c685a27b2aa7480317f26b3c602c45705e232c925152198a41136a42743b",
+    "tools/start_flow.py": "a8cca3ca077fec9b9179553d9ba85ffeb5f3af3e52e18145b1efe5dc593731fe",
+    "train_flow.sh": "730c6664fe00774a9a8303be2039ca2d028d2585de3ddca9f61ead3d9922dcb5",
+    "train_qwen3_flow.sh": "66ea35d338e7e61013187492dd25164bafd115523a1b95b87b675d46773677dc",
+    "train_qwen3_no_flow_loss.sh": "b2e58a8508a066bffd4a25d86e13ade40261aa9cf82290148d857bf257e7c3bd"
+  },
+  "gpu_jobs_started": 0,
+  "not_run": [
+    "Full-size 4B GPU training",
+    "Full benchmark model inference or new accuracy results",
+    "Fresh environment installation"
+  ]
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Parse every recipe and inspect real Qwen2.5 processor inputs without loading 7B weights."""
+"""Parse every recipe and inspect the selected Qwen VL processor without full model weights."""
 import argparse
 import copy
 import importlib.util
@@ -223,7 +223,8 @@ def main():
         "teacher_question_toggle_and_answer_exclusion": "passed", "processor_samples": records,
         "reconstruction_examples": target_examples,
         "real_datamodule_checks": loaders,
-        "limits": "Representative real processor checks; full 7B GPU preflight remains required."})
+        "base_model": data["processor_name_or_path"], "flow_loss_weight": args.defaults["flow_weight"],
+        "limits": "Representative real processor checks; full-model GPU preflight remains required."})
     print("CPU_CHECKS_PASSED", a.output / "validation.json", flush=True)
 
 

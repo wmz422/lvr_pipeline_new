@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'tools'))
-from common import ROOT, PROJECT, EXPERIMENT, QWEN, SUITE, environment, python, run
+from common import ROOT, PROJECT, EXPERIMENT, QWEN, SUITE, LOCAL_FLOW, environment, python, run
 
 FLOW_ARGS = ['--gpus', '4', '--cpu-threads', '8',
              '--teacher-batch-size', '8', '--teacher-optimizer-device', 'cpu',
@@ -37,7 +37,7 @@ def main(argv=None):
             env.pop('TRANSFORMERS_OFFLINE', None)
         run([python(), ROOT / 'tools' / f'{script}.py', *extra], env=env)
     elif command in ('cpu-check', 'cache', 'preflight', 'train'):
-        if not (ROOT / '.local/flow.yaml').exists():
+        if not LOCAL_FLOW.exists():
             raise SystemExit('Run: python reproduce.py configure')
         action = {'cpu-check': ['--prepare-only'], 'cache': ['--prepare-latents-only'],
                   'preflight': ['--preflight-only'], 'train': []}[command]

@@ -1,4 +1,4 @@
-"""Single-command, manually configured Qwen2.5-VL-7B Flow training and evaluation."""
+"""Single-command, manually configured Qwen VL Flow training and evaluation."""
 import argparse
 import importlib.util
 import json
@@ -6,7 +6,9 @@ import os
 from pathlib import Path
 import sys
 
-from common import ROOT, PROJECT, EXPERIMENT, environment, python, run, write_json
+from common import (ROOT, PROJECT, EXPERIMENT, VARIANT, QWEN, QWEN_LOCK, LOCAL_FLOW,
+                    DEFAULT_OUTPUT, FLOW_WEIGHT, reference_recipe, flow_defaults,
+                    environment, python, run, write_json)
 from release import load_lock, safe_target, sha256
 
 sys.path.insert(0, str(ROOT))
@@ -21,8 +23,9 @@ def launcher():
 
 
 def bootstrap_binding():
-    return {'root': str(ROOT), 'locks': {name: sha256(ROOT / 'manifests' / name)
-            for name in ('data_release.json', 'training_data.json', 'qwen_model.json', 'flow_model.json')}}
+    return {'root': str(ROOT), 'variant': VARIANT,
+            'locks': {name: sha256(ROOT / 'manifests' / name)
+                      for name in ('data_release.json', 'training_data.json', QWEN_LOCK.name, 'flow_model.json')}}
 
 
 def inputs_present():
@@ -39,7 +42,7 @@ def bootstrap(data_source=None):
     def invoke(*command):
         run([python(), ROOT / 'reproduce.py', *command], env=env)
     invoke('configure')
-    marker = ROOT / '.local/inputs_ready.json'
+    marker = ROOT / '.local' / f'inputs_ready_{VARIANT}.json'
     binding = bootstrap_binding()
     ready = marker.exists() and json.loads(marker.read_text()) == binding
     if not ready:
@@ -76,21 +79,26 @@ def main(argv=None):
     if '--dry-run' in forwarded:
         os.environ['CUDA_VISIBLE_DEVICES'] = ''
     # Resolve defaults without writing .local or requiring downloaded model/data files.
-    local = ROOT / '.local/flow.yaml'
+    local = LOCAL_FLOW
     os.environ['LVR_FLOW_CONFIG'] = str(local if local.exists() else EXPERIMENT / 'configs/experiment.yaml')
     launch = launcher()
     args = launch.parse_args([*FLOW_ARGS, *forwarded])
+    if not local.exists():
+        args.defaults = flow_defaults()
+    if args.defaults['flow_weight'] != FLOW_WEIGHT:
+        raise ValueError(f'Local configuration does not match {VARIANT} Flow loss weight')
     if not local.exists() and not any(a == '--output' or a.startswith('--output=') for a in forwarded):
-        args.output = ROOT / 'runs/flow'
-    import yaml
-    plain = yaml.safe_load((ROOT / 'configs/plain_reference.yaml').read_text().replace('${REPO}', str(ROOT)))
+        args.output = DEFAULT_OUTPUT
+    plain = reference_recipe()
     counts = json.loads((ROOT / 'manifests/training_data.json').read_text())
     configs, steps = launch.build_recipes(args, plain, {k: counts[k] for k in ('train', 'val')},
                                          {'protocol_sha256': '${GT_PROTOCOL_SHA}'})
-    summary = {'hardware': launch.hardware_summary(args, configs), 'optimizer_steps': steps,
+    summary = {'variant': VARIANT, 'base_model': str(QWEN), 'flow_loss_weight': FLOW_WEIGHT,
+               'hardware': launch.hardware_summary(args, configs), 'optimizer_steps': steps,
                'output': str(args.output), 'validation': 'Each stage validates; full 11-benchmark predicted evaluation follows Joint',
                'gpu_preflight': not args.skip_preflight, 'bootstrap': not wrapper.skip_bootstrap,
-               'automatic_hardware_tuning': False}
+               'automatic_hardware_tuning': False,
+               'evaluation': launch.evaluation_command(args, plain, steps)}
     if args.dry_run:
         print(json.dumps({'status': 'dry_run', 'gpu_started': False, 'downloads_started': False, **summary}, indent=2))
         return
