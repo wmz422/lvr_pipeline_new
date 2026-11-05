@@ -1,0 +1,38 @@
+{
+  "schema": "qwen25-data-release-v1",
+  "files_manifest": "benchmark_release.files.jsonl.gz",
+  "files_manifest_sha256": "0394f45806796e461c23c13200182d6b552ca0f37284dd3673f2c1386374f6f9",
+  "file_count": 7000,
+  "payload_bytes": 1313424787,
+  "archives": [
+    {
+      "file": "images-000.tar",
+      "bytes": 538142720,
+      "sha256": "b4201165c87a194a882753a9e0fdf2f584a3c351c76726e141eb66f64e45f30d",
+      "group": "images",
+      "members": 2982
+    },
+    {
+      "file": "images-001.tar",
+      "bytes": 538368000,
+      "sha256": "13f31244a48ddb995690e730aef6183b53b8c1b142b3f04e0bcadeb71067cf2d",
+      "group": "images",
+      "members": 2867
+    },
+    {
+      "file": "images-002.tar",
+      "bytes": 229365760,
+      "sha256": "ac1565096a749568eb401a284e7f08adeef339ac635562394bec80380607d586",
+      "group": "images",
+      "members": 1140
+    },
+    {
+      "file": "metadata-003.tar",
+      "bytes": 12953600,
+      "sha256": "1c696be420f080a88d2c88812fd6d63cc0c787b1b29bbf7776b2e255ee58fd57",
+      "group": "metadata",
+      "members": 11
+    }
+  ],
+  "public_base_url": null
+}

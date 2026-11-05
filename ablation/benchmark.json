@@ -1,0 +1,14 @@
+{
+  "schema": "latent-ablation-benchmark-v1",
+  "repo_id": "Wing22/lvr-latent-ablation-benchmarks-v1",
+  "suite_manifest_sha256": "b2eb30f0aa49a682c7882469df12aaa809a45d24f35d7df2e533d477571f1297",
+  "donors_sha256": "131e8d45bd30173e0e5b0148b312509664f2f832fa7dff53732790ef43d44b2e",
+  "benchmarks": {
+    "HRBench4K": 800,
+    "VStarBench": 191,
+    "MIRA": 546,
+    "MentisOculi": 1250
+  },
+  "records": 2787,
+  "images": 6989
+}

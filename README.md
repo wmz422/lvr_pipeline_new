@@ -4,6 +4,10 @@
 默认 Flow 配方对应本次四卡实验；同时提供从同一基座开始的两轮 Plain SFT 入口。
 代码是独立副本，不会读写原实验的训练目录。
 
+已训练权重的 **Teacher / Teacher shuffled / Predicted / Predicted shuffled / Zero**
+消融见独立目录 [ablation/](ablation/README.md)。支持 Qwen3-VL-4B 和 Qwen2.5-VL-7B、
+独立 benchmark 数据包，以及通过 `--gpus` / `--devices` 调整并行推理卡数。
+
 ## Qwen3-VL-4B-Instruct 与去 Flow loss 消融
 
 新增两个完整实验入口。Qwen3 使用官方 `Qwen/Qwen3-VL-4B-Instruct`，固定 revision

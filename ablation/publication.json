@@ -1,0 +1,12 @@
+{
+  "huggingface": {
+    "repo_id": "Wing22/lvr-latent-ablation-benchmarks-v1",
+    "status": "complete",
+    "private": false,
+    "revision": "bad9a25067e80e90f82069c09edda5700fe13895",
+    "release_sha256": "6b420dc536f7e565d02fdcbbb4a2f6525c2f27f995202616c97bea0bd777ee06",
+    "download_base_url": "https://huggingface.co/datasets/Wing22/lvr-latent-ablation-benchmarks-v1/resolve/bad9a25067e80e90f82069c09edda5700fe13895",
+    "url": "https://huggingface.co/datasets/Wing22/lvr-latent-ablation-benchmarks-v1",
+    "files_verified": 8
+  }
+}

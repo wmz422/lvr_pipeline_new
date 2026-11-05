@@ -1,0 +1,65 @@
+{
+  "status": "local_verification_passed",
+  "date": "2026-11-05",
+  "cuda_devices": 0,
+  "benchmark": {
+    "records": 2787,
+    "images": 6989,
+    "extracted_files": 7000,
+    "archive_files": 4,
+    "archive_bytes": 1318830080,
+    "suite_manifest_sha256": "b2eb30f0aa49a682c7882469df12aaa809a45d24f35d7df2e533d477571f1297",
+    "records_sha256": "e4c2b57022d9fb8d60c675c9068df07f0950bd74e2893c75c1d69b012be1acef",
+    "donors_sha256": "131e8d45bd30173e0e5b0148b312509664f2f832fa7dff53732790ef43d44b2e",
+    "global_cross_benchmark_pairs": 1894,
+    "relocated_restore": "passed_in_path_with_spaces"
+  },
+  "tests": {
+    "passed": 12,
+    "log_sha256": "200b041b0ac1d7412c552f6dcfcb18a7f7ea0659e15915c80c72b26d2930b0b5",
+    "native_cpu_models": [
+      "qwen3_vl",
+      "qwen2_5_vl"
+    ],
+    "native_conditions_per_family": 5,
+    "checkpoint_relocation": "passed",
+    "native_model_weights": "random_tiny_test_models"
+  },
+  "preprocessing": {
+    "real_native_processors": [
+      "Qwen3-VL-4B-Instruct",
+      "Qwen2.5-VL-7B-Instruct"
+    ],
+    "cases": 16,
+    "benchmarks": 4,
+    "teacher_and_student_paths": true,
+    "report_sha256": "4f9515672538932df5a78083f9f7d6a6ce6f148abf852711364b8a342fc85e46"
+  },
+  "scoring": {
+    "fixture": "synthetic_reference_answers_only_not_model_predictions",
+    "generations": 13935,
+    "modes": 5,
+    "four_native_scores_and_macro": "passed",
+    "hrbench4k_crop_records": 772,
+    "hrbench4k_original_fallback_records": 28
+  },
+  "cli": {
+    "qwen3_gpu_count": 4,
+    "qwen25_explicit_devices": [
+      0,
+      2
+    ],
+    "shell_entry_from_unrelated_cwd": "passed",
+    "dry_runs_started_no_gpus": true
+  },
+  "limitations": [
+    "No GPU inference with full trained 4B/7B checkpoints was run in this CUDA-unavailable session."
+  ],
+  "publication": {
+    "huggingface_revision": "bad9a25067e80e90f82069c09edda5700fe13895",
+    "public_files_size_and_sha256_verified": 8,
+    "default_standard_library_download": "passed_anonymous_metadata_archive",
+    "downloaded_metadata_bytes": 12953600,
+    "downloaded_metadata_files": 11
+  }
+}

@@ -18,4 +18,5 @@ lvr_pipeline_new/data/*
 lvr_pipeline_new/benchmark/
 *.partial
 *.log
+ablation/data/
 
