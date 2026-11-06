@@ -1,0 +1,531 @@
+{
+  "schema": "latent-ablation-assets-v1",
+  "models": {
+    "monet": {
+      "repo_id": "NOVAglow646/Monet-7B",
+      "revision": "39c1e320a3e15c357bff911fda263923edbdda37",
+      "model_subdir": "",
+      "files": [
+        {
+          "path": "added_tokens.json",
+          "bytes": 752,
+          "sha256": null,
+          "git_blob": "08ce6b3c1fc22eb4bf67af19d732c00cac527548"
+        },
+        {
+          "path": "chat_template.json",
+          "bytes": 1049,
+          "sha256": null,
+          "git_blob": "13303be6f396b038cf397b34a8096819d403836b"
+        },
+        {
+          "path": "config.json",
+          "bytes": 1724,
+          "sha256": null,
+          "git_blob": "22e10c3164d6d60b5c50d6c8f5768992ec108a31"
+        },
+        {
+          "path": "generation_config.json",
+          "bytes": 143,
+          "sha256": null,
+          "git_blob": "889dcf8c955d634158680524631420b9862c454e"
+        },
+        {
+          "path": "merges.txt",
+          "bytes": 1671853,
+          "sha256": null,
+          "git_blob": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7"
+        },
+        {
+          "path": "model-00001-of-00004.safetensors",
+          "bytes": 4962606688,
+          "sha256": "4676bd3ad6960ba9c373c06f47502ed1e93bc017d8ef8dc3139731052759dda5",
+          "git_blob": "905d566c4f42520074a939f05113ac5f3bdd077c"
+        },
+        {
+          "path": "model-00002-of-00004.safetensors",
+          "bytes": 4969177400,
+          "sha256": "ea5793039245807da1769d4da06fd52047eaa8c51729576e8eb0afb00d3e56b1",
+          "git_blob": "131cb3e37bce684dca9a8ac96b9de925611b1b84"
+        },
+        {
+          "path": "model-00003-of-00004.safetensors",
+          "bytes": 4975135320,
+          "sha256": "b0987eebc66b9662d25d04fe0a6b161a937777155a9b34a6d3609ba6b61c8a8b",
+          "git_blob": "f7955fd4c032c281f680ed4e9c508c1924f70eee"
+        },
+        {
+          "path": "model-00004-of-00004.safetensors",
+          "bytes": 1671846736,
+          "sha256": "c9498dcaf30f09293a89bba66dd003562bdfb5a25f13ea193ee5e265e0152f30",
+          "git_blob": "a2320fb56ff644a13d417e9ade3f24327eeab27c"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "bytes": 57619,
+          "sha256": null,
+          "git_blob": "47c60a19016f8b48777eb130c19a2090817081ac"
+        },
+        {
+          "path": "preprocessor_config.json",
+          "bytes": 791,
+          "sha256": null,
+          "git_blob": "849f287996c2384a75917336bd4c4bdd28b73b35"
+        },
+        {
+          "path": "special_tokens_map.json",
+          "bytes": 730,
+          "sha256": null,
+          "git_blob": "b4c20f011f17e880efdb82182d7fe45618d88331"
+        },
+        {
+          "path": "tokenizer.json",
+          "bytes": 11422852,
+          "sha256": "e23baaa63acde6df7ad5371df408beedfadae958f5c5eabcdf8a2cd081b40ef4",
+          "git_blob": "c0fc6d2b715231116c10d35f9efdaa41310086ca"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "bytes": 6825,
+          "sha256": null,
+          "git_blob": "c39ae57754081206dda30c54d9a733b4d4ca78c0"
+        },
+        {
+          "path": "vocab.json",
+          "bytes": 2776833,
+          "sha256": null,
+          "git_blob": "4783fe10ac3adce15ac8f358ef5462739852c569"
+        }
+      ]
+    },
+    "monet-teacher": {
+      "repo_id": "NOVAglow646/Monet-SFT-7B",
+      "revision": "67919cada4e1e6bbc013819a4d483d9bb914d629",
+      "model_subdir": "stage2",
+      "files": [
+        {
+          "path": "stage2/added_tokens.json",
+          "bytes": 752,
+          "sha256": null,
+          "git_blob": "08ce6b3c1fc22eb4bf67af19d732c00cac527548"
+        },
+        {
+          "path": "stage2/chat_template.jinja",
+          "bytes": 1017,
+          "sha256": null,
+          "git_blob": "6c226632394ae7474b0d4b13e15793eac2e21ee9"
+        },
+        {
+          "path": "stage2/config.json",
+          "bytes": 3637,
+          "sha256": null,
+          "git_blob": "45a234a5721d8095e02d6bcac46863d081b065c6"
+        },
+        {
+          "path": "stage2/generation_config.json",
+          "bytes": 244,
+          "sha256": null,
+          "git_blob": "dff94b24035dcc2e18892959586d10603d3e82a2"
+        },
+        {
+          "path": "stage2/merges.txt",
+          "bytes": 1671853,
+          "sha256": null,
+          "git_blob": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7"
+        },
+        {
+          "path": "stage2/model-00001-of-00004.safetensors",
+          "bytes": 4965419112,
+          "sha256": "daa156afaf34fed7be870dbccdd12db0e3e92187c9d755f31653c4ccb6ce2954",
+          "git_blob": "fe43d17a4ef03b3e634e7795bd3df54cc2bcfec1"
+        },
+        {
+          "path": "stage2/model-00002-of-00004.safetensors",
+          "bytes": 4991495816,
+          "sha256": "5140dfeab39fe95c784bc8bfd4e3279b1ff2059e376ea58aebedd3bb290e5799",
+          "git_blob": "bc0f8a5e44c4b863f0eee9cdcef1ddda314b56b3"
+        },
+        {
+          "path": "stage2/model-00003-of-00004.safetensors",
+          "bytes": 4932751040,
+          "sha256": "bd55afc3a00da7cd44099e9e0fc21a1d535a62ee039e79dacc050afc64117aab",
+          "git_blob": "5bd43101c732431c5c1a4f2d97057974e3d4626d"
+        },
+        {
+          "path": "stage2/model-00004-of-00004.safetensors",
+          "bytes": 1689100192,
+          "sha256": "debf05227df9795774a51a1fc49e1b980e731999861565f1cb986408c4514d73",
+          "git_blob": "eaba4223c234d0fd76948806afb5fd642c0cf1a5"
+        },
+        {
+          "path": "stage2/model.safetensors.index.json",
+          "bytes": 57655,
+          "sha256": null,
+          "git_blob": "02cb6db7eeca023bdde63ad14fce824002b512fe"
+        },
+        {
+          "path": "stage2/preprocessor_config.json",
+          "bytes": 791,
+          "sha256": null,
+          "git_blob": "849f287996c2384a75917336bd4c4bdd28b73b35"
+        },
+        {
+          "path": "stage2/special_tokens_map.json",
+          "bytes": 730,
+          "sha256": null,
+          "git_blob": "b4c20f011f17e880efdb82182d7fe45618d88331"
+        },
+        {
+          "path": "stage2/tokenizer.json",
+          "bytes": 11422852,
+          "sha256": "e23baaa63acde6df7ad5371df408beedfadae958f5c5eabcdf8a2cd081b40ef4",
+          "git_blob": "c0fc6d2b715231116c10d35f9efdaa41310086ca"
+        },
+        {
+          "path": "stage2/tokenizer_config.json",
+          "bytes": 5779,
+          "sha256": null,
+          "git_blob": "877413fb26361b88f04072db7ebafcc63dfa1370"
+        },
+        {
+          "path": "stage2/video_preprocessor_config.json",
+          "bytes": 907,
+          "sha256": null,
+          "git_blob": "6662e15042913e44162efcece6ee3bd643ffbcf1"
+        },
+        {
+          "path": "stage2/vocab.json",
+          "bytes": 2776833,
+          "sha256": null,
+          "git_blob": "4783fe10ac3adce15ac8f358ef5462739852c569"
+        }
+      ]
+    },
+    "lvr": {
+      "repo_id": "vincentleebang/LVR-7B",
+      "revision": "413c55c908c152f47538320615178cddcf73201a",
+      "model_subdir": "",
+      "files": [
+        {
+          "path": "added_tokens.json",
+          "bytes": 710,
+          "sha256": null,
+          "git_blob": "732635c6e923906ee8f5be3c5fbf322c6aaa68fb"
+        },
+        {
+          "path": "chat_template.jinja",
+          "bytes": 1017,
+          "sha256": null,
+          "git_blob": "6c226632394ae7474b0d4b13e15793eac2e21ee9"
+        },
+        {
+          "path": "config.json",
+          "bytes": 3402,
+          "sha256": null,
+          "git_blob": "5f61793588a27825a4df35a88dc7bd4678145004"
+        },
+        {
+          "path": "generation_config.json",
+          "bytes": 214,
+          "sha256": null,
+          "git_blob": "4e5f81f54b730ac66b197013bbc068d628d45883"
+        },
+        {
+          "path": "merges.txt",
+          "bytes": 1671853,
+          "sha256": null,
+          "git_blob": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7"
+        },
+        {
+          "path": "model-00001-of-00004.safetensors",
+          "bytes": 4968243304,
+          "sha256": "ae6c8906c89a5c7a6210133659991dfa9f13de94ba58027beed51ec6686da1e6",
+          "git_blob": "cba806a59bbcabb17459fe66dbf761bd37ec8f2c"
+        },
+        {
+          "path": "model-00002-of-00004.safetensors",
+          "bytes": 4991495816,
+          "sha256": "e0c6374e79d006f00b7cb4d0aae0f5d86c6ce2d74c57b8677ce3ca0d8175a4f7",
+          "git_blob": "6433ec2a0a525be2d693a3af43834dbf20b3ac5c"
+        },
+        {
+          "path": "model-00003-of-00004.safetensors",
+          "bytes": 4932751040,
+          "sha256": "9bc98ad8e1808c5e5f26c18005e4a36619744adf93d04626388446e7e1fbba7d",
+          "git_blob": "446fb7848260894658a4157936f7e748621899c9"
+        },
+        {
+          "path": "model-00004-of-00004.safetensors",
+          "bytes": 1691924384,
+          "sha256": "f656516f43aa0b2b0a0f7f23f83a18032516e278ea13dc2ee842c81a3042c8c1",
+          "git_blob": "ed5b71286bf99f7f4369c09c4ce0e7b2abac6c78"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "bytes": 57651,
+          "sha256": null,
+          "git_blob": "0ba3dc5850f36c05d776cf660928bb9bc5768257"
+        },
+        {
+          "path": "preprocessor_config.json",
+          "bytes": 792,
+          "sha256": null,
+          "git_blob": "b688ab903abf6fcd8f41f8c6f8011f5eee9f836b"
+        },
+        {
+          "path": "special_tokens_map.json",
+          "bytes": 613,
+          "sha256": null,
+          "git_blob": "ac23c0aaa2434523c494330aeb79c58395378103"
+        },
+        {
+          "path": "tokenizer.json",
+          "bytes": 11422653,
+          "sha256": "822e2e55f115419fa78f0369124d602f9920d06e440a229c34f83a771881c64d",
+          "git_blob": "a317b5750b79f171021d0ec81c06300d89fca87a"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "bytes": 5496,
+          "sha256": null,
+          "git_blob": "12e2b4db761c1c8ea19601e7bfc97daa7fca902c"
+        },
+        {
+          "path": "video_preprocessor_config.json",
+          "bytes": 908,
+          "sha256": null,
+          "git_blob": "230d203ddda9654d686e723469424055b36d778f"
+        },
+        {
+          "path": "vocab.json",
+          "bytes": 2776833,
+          "sha256": null,
+          "git_blob": "4783fe10ac3adce15ac8f358ef5462739852c569"
+        }
+      ]
+    },
+    "qwen3-base": {
+      "repo_id": "Qwen/Qwen3-VL-4B-Instruct",
+      "revision": "ebb281ec70b05090aa6165b016eac8ec08e71b17",
+      "model_subdir": "",
+      "files": [
+        {
+          "path": "chat_template.json",
+          "bytes": 5502,
+          "sha256": null,
+          "git_blob": "e49e75bdda104c8de941eb20e0b3765184fb27bc"
+        },
+        {
+          "path": "config.json",
+          "bytes": 1505,
+          "sha256": null,
+          "git_blob": "22be8bb79043d39840ca5e70d7a2dab80311602c"
+        },
+        {
+          "path": "generation_config.json",
+          "bytes": 269,
+          "sha256": null,
+          "git_blob": "e116347d7ef42621c7a5957f82c015c38d939c1f"
+        },
+        {
+          "path": "merges.txt",
+          "bytes": 1671839,
+          "sha256": null,
+          "git_blob": "20024bfe7c83998e9aeaf98a0cd6a2ce6306c2f0"
+        },
+        {
+          "path": "model-00001-of-00002.safetensors",
+          "bytes": 4967229296,
+          "sha256": "30a01a0556622645a3cce87b655bbbbbc1f170c196099f1b666c93202c3339a9",
+          "git_blob": "c76bab650cbb4864c0f85f6d3af26ba3fe857165"
+        },
+        {
+          "path": "model-00002-of-00002.safetensors",
+          "bytes": 3908490048,
+          "sha256": "046296a2a387efb43b0c997d5833c789604d168834f6e0d3064bf7bb13d002a6",
+          "git_blob": "e2792feb019e73e6f15d89bc62295fd424807583"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "bytes": 64742,
+          "sha256": null,
+          "git_blob": "3b52de97496e2f4501dfa92a87642f60db3e22a1"
+        },
+        {
+          "path": "preprocessor_config.json",
+          "bytes": 390,
+          "sha256": null,
+          "git_blob": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64"
+        },
+        {
+          "path": "tokenizer.json",
+          "bytes": 7032403,
+          "sha256": null,
+          "git_blob": "c6cc1014128b19d1fc46b1d30a23e3b1d35db421"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "bytes": 10868,
+          "sha256": null,
+          "git_blob": "d3d3763207692c78780f4bf42d4dadf49a5c8012"
+        },
+        {
+          "path": "video_preprocessor_config.json",
+          "bytes": 385,
+          "sha256": null,
+          "git_blob": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe"
+        },
+        {
+          "path": "vocab.json",
+          "bytes": 2776833,
+          "sha256": null,
+          "git_blob": "4783fe10ac3adce15ac8f358ef5462739852c569"
+        }
+      ]
+    },
+    "qwen25-processor": {
+      "repo_id": "Qwen/Qwen2.5-VL-7B-Instruct",
+      "revision": "cc594898137f460bfe9f0759e9844b3ce807cfb5",
+      "model_subdir": "",
+      "files": [
+        {
+          "path": "chat_template.json",
+          "bytes": 1050,
+          "sha256": null,
+          "git_blob": "732bd68bc5427d1fb6c06a59b3bf2456b2155d24"
+        },
+        {
+          "path": "config.json",
+          "bytes": 1374,
+          "sha256": null,
+          "git_blob": "58ee12a9fb3d8708a1e41e49cb9aa5ac5017b6a6"
+        },
+        {
+          "path": "generation_config.json",
+          "bytes": 216,
+          "sha256": null,
+          "git_blob": "1088c9865dbf2e8152485664bb07495e89a14efb"
+        },
+        {
+          "path": "merges.txt",
+          "bytes": 1671839,
+          "sha256": null,
+          "git_blob": "20024bfe7c83998e9aeaf98a0cd6a2ce6306c2f0"
+        },
+        {
+          "path": "preprocessor_config.json",
+          "bytes": 350,
+          "sha256": null,
+          "git_blob": "7f3b746825e5eef53ed8ed57a91df9e86ee62c0a"
+        },
+        {
+          "path": "tokenizer.json",
+          "bytes": 7031645,
+          "sha256": null,
+          "git_blob": "443909a61d429dff23010e5bddd28ff530edda00"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "bytes": 5702,
+          "sha256": null,
+          "git_blob": "91684ea3dc135a7d815e2c932054ce88c1aab41f"
+        },
+        {
+          "path": "vocab.json",
+          "bytes": 2776833,
+          "sha256": null,
+          "git_blob": "4783fe10ac3adce15ac8f358ef5462739852c569"
+        }
+      ]
+    },
+    "ours": {
+      "repo_id": "Wing22/Qwen3-VL-4B-Flow-4Stage-Ablation",
+      "revision": "2774450e4e28ae0732c1928e80c9684835a5d93f",
+      "model_subdir": "",
+      "files": [
+        {
+          "path": "joint/last_full.ckpt",
+          "bytes": 27025904292,
+          "sha256": "178e3c699168b421737332f4aff77335619bb3bd8968b1ebc2abba4e50cd7980"
+        },
+        {
+          "path": "teacher/student_source.ckpt",
+          "bytes": 33081673320,
+          "sha256": "d31845d180677c966b6d1361713aec804fae81b77b0c1378f9ba97d67802e327"
+        },
+        {
+          "path": "model_release.json",
+          "bytes": 1773,
+          "sha256": "a21b18c4fe0ba81be54cea3fa20a5c1a79d1027bf4ef94249589886a8fc3f498"
+        },
+        {
+          "path": "README.md",
+          "bytes": 2040,
+          "sha256": "987377e97243e3dca4175969c64a76b3d8439b55062e48ab8c329c334efb42b5"
+        }
+      ]
+    }
+  },
+  "sources": {
+    "lvr": {
+      "repository": "https://github.com/VincentLeebang/lvr",
+      "commit": "637a9f7e17e865b1372b65f182197fbc4a5a1449",
+      "files": [
+        {
+          "path": "src/constants.py",
+          "sha256": "2aa4723c0ed571c4e0e2db3ba4b177c705989f2d3bd82e554292325a06dc7d57"
+        },
+        {
+          "path": "src/model/lvr_heads.py",
+          "sha256": "0012e705708535cdc361640eab59a3156c387a5ae726a008b6e0f76e8ddb564f"
+        },
+        {
+          "path": "src/model/qwen_lvr_model.py",
+          "sha256": "1440324cb9a3cf4f1acbf118324f8215d9de9886057124488971aa897b7d2bff"
+        },
+        {
+          "path": "src/train/monkey_patch_forward_lvr.py",
+          "sha256": "c5fd0942dc0b4e71e8b1213b9772c90eb8f6c3051a2d08ab546c402dc3de1226"
+        },
+        {
+          "path": "LICENSE",
+          "sha256": "371c2454030c17074e87b9bd5097a46261fe766c5d1fee4ece1540d3def4f6e9"
+        }
+      ]
+    },
+    "monet": {
+      "repository": "https://github.com/NOVAglow646/Monet",
+      "commit": "08939998d3d643a73a316e349faa34f420429153",
+      "files": [
+        {
+          "path": "inference/apply_vllm_monet.py",
+          "sha256": "3b78090aee3da86846e4cd1ae178611b52714f3a10befd43b6314845b65a684b"
+        },
+        {
+          "path": "inference/load_and_gen_vllm.py",
+          "sha256": "bcc3743a022fe873207a8b19008bfc23dfbc0bd1c01ced3519e14b0e9fbfd160"
+        },
+        {
+          "path": "inference/vllm/monet_gpu_model_runner.py",
+          "sha256": "3b34e478e555ce54a6df80280adca82762bcf09f1da7d08c970eb645561f5a6b"
+        },
+        {
+          "path": "monet_qwen_model/modeling_qwen2_5_vl_monet.py",
+          "sha256": "6978e3fe893f9474c9634b66064ec8c879b7a94ee5a3ce9c7b8887339def5632"
+        },
+        {
+          "path": "monet_qwen_model/apply_qwen2_5_monet.py",
+          "sha256": "1d3d4ad3a196319b0cfd915579e6d8991c2173bae41be4ddfbb085e6c7cad8c8"
+        },
+        {
+          "path": "src/utils.py",
+          "sha256": "ec29fd66f0a971d5cc961f38b6df8959d0be8738b0aa9907f12c659bc52aa301"
+        },
+        {
+          "path": "RL/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ]
+    }
+  }
+}

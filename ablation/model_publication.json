@@ -1,0 +1,20 @@
+{
+  "status": "complete",
+  "repo_id": "Wing22/Qwen3-VL-4B-Flow-4Stage-Ablation",
+  "revision": "2774450e4e28ae0732c1928e80c9684835a5d93f",
+  "url": "https://huggingface.co/Wing22/Qwen3-VL-4B-Flow-4Stage-Ablation",
+  "public": true,
+  "files_verified": [
+    {
+      "path": "joint/last_full.ckpt",
+      "bytes": 27025904292,
+      "sha256": "178e3c699168b421737332f4aff77335619bb3bd8968b1ebc2abba4e50cd7980"
+    },
+    {
+      "path": "teacher/student_source.ckpt",
+      "bytes": 33081673320,
+      "sha256": "d31845d180677c966b6d1361713aec804fae81b77b0c1378f9ba97d67802e327"
+    }
+  ],
+  "manifest_sha256": "a21b18c4fe0ba81be54cea3fa20a5c1a79d1027bf4ef94249589886a8fc3f498"
+}

@@ -1,0 +1,286 @@
+{
+  "date": "2026-11-06",
+  "status": "cpu_verified_gpu_extraction_pending",
+  "cuda_devices": 0,
+  "unit_tests": {
+    "count": 23,
+    "result": "passed",
+    "command": "python -m unittest discover -s ablation -p 'test_*.py' -v",
+    "checks": [
+      "exact eligible-pair formula versus naive enumeration for three scopes",
+      "same-problem and identical-image transitive exclusions",
+      "constant/opposite/zero-norm and absent-position behavior",
+      "six-branch common cohort and incomplete-cache rejection",
+      "download receipt and tensor checksum integrity",
+      "Monet observer preserves consumed tensors and native generation code",
+      "reference-answer isolation and native prompt/footer layout",
+      "original five-mode pipeline and both tiny Qwen families"
+    ]
+  },
+  "official_tiny_models": {
+    "result": "passed",
+    "device": "cpu",
+    "torch": "2.8.0+cu128",
+    "transformers": "4.54.1",
+    "lvr": "8 observed vectors match actual native recurrent inputs; native image-target extractor works",
+    "monet_teacher": "official patched image-conditioned latent-mode forward returns 8 finite targets; multi-helper first 8 equal the full 16-target native forward",
+    "random_parameters": true,
+    "trained_model_scores": false
+  },
+  "released_processor_checks": {
+    "result": "passed",
+    "examples": [
+      {
+        "method": "lvr",
+        "id": "HRBench4K/0",
+        "benchmark": "HRBench4K",
+        "input_tokens": 16454,
+        "image_grid_thw": [
+          [
+            1,
+            256,
+            256
+          ]
+        ],
+        "latent_pads": 0
+      },
+      {
+        "method": "lvr",
+        "id": "VStarBench/0",
+        "benchmark": "VStarBench",
+        "input_tokens": 3893,
+        "image_grid_thw": [
+          [
+            1,
+            108,
+            142
+          ]
+        ],
+        "latent_pads": 0
+      },
+      {
+        "method": "lvr",
+        "id": "MIRA/billiards/1",
+        "benchmark": "MIRA",
+        "input_tokens": 2144,
+        "image_grid_thw": [
+          [
+            1,
+            64,
+            128
+          ]
+        ],
+        "latent_pads": 0
+      },
+      {
+        "method": "lvr",
+        "id": "MentisOculi/form-board/level_01/puzzle_0001",
+        "benchmark": "MentisOculi",
+        "input_tokens": 1115,
+        "image_grid_thw": [
+          [
+            1,
+            34,
+            126
+          ]
+        ],
+        "latent_pads": 0
+      },
+      {
+        "method": "monet",
+        "id": "HRBench4K/0",
+        "benchmark": "HRBench4K",
+        "input_tokens": 16469,
+        "image_grid_thw": [
+          [
+            1,
+            256,
+            256
+          ]
+        ],
+        "latent_pads": 0
+      },
+      {
+        "method": "monet",
+        "id": "VStarBench/0",
+        "benchmark": "VStarBench",
+        "input_tokens": 3903,
+        "image_grid_thw": [
+          [
+            1,
+            108,
+            142
+          ]
+        ],
+        "latent_pads": 0
+      },
+      {
+        "method": "monet",
+        "id": "MIRA/billiards/1",
+        "benchmark": "MIRA",
+        "input_tokens": 2167,
+        "image_grid_thw": [
+          [
+            1,
+            64,
+            128
+          ]
+        ],
+        "latent_pads": 0
+      },
+      {
+        "method": "monet",
+        "id": "MentisOculi/form-board/level_01/puzzle_0001",
+        "benchmark": "MentisOculi",
+        "input_tokens": 1138,
+        "image_grid_thw": [
+          [
+            1,
+            34,
+            126
+          ]
+        ],
+        "latent_pads": 0
+      },
+      {
+        "method": "monet-teacher",
+        "id": "HRBench4K/0",
+        "benchmark": "HRBench4K",
+        "input_tokens": 16567,
+        "image_grid_thw": [
+          [
+            1,
+            256,
+            256
+          ],
+          [
+            1,
+            14,
+            24
+          ]
+        ],
+        "latent_pads": 8
+      },
+      {
+        "method": "monet-teacher",
+        "id": "VStarBench/0",
+        "benchmark": "VStarBench",
+        "input_tokens": 3953,
+        "image_grid_thw": [
+          [
+            1,
+            108,
+            142
+          ],
+          [
+            1,
+            12,
+            12
+          ]
+        ],
+        "latent_pads": 8
+      },
+      {
+        "method": "monet-teacher",
+        "id": "MIRA/billiards/1",
+        "benchmark": "MIRA",
+        "input_tokens": 2493,
+        "image_grid_thw": [
+          [
+            1,
+            64,
+            128
+          ],
+          [
+            1,
+            24,
+            52
+          ]
+        ],
+        "latent_pads": 8
+      },
+      {
+        "method": "monet-teacher",
+        "id": "MentisOculi/form-board/level_01/puzzle_0001",
+        "benchmark": "MentisOculi",
+        "input_tokens": 1476,
+        "image_grid_thw": [
+          [
+            1,
+            34,
+            126
+          ],
+          [
+            1,
+            36,
+            36
+          ]
+        ],
+        "latent_pads": 8
+      }
+    ],
+    "revisions": {
+      "monet": "39c1e320a3e15c357bff911fda263923edbdda37",
+      "monet-teacher": "67919cada4e1e6bbc013819a4d483d9bb914d629",
+      "lvr": "413c55c908c152f47538320615178cddcf73201a",
+      "qwen25-processor": "cc594898137f460bfe9f0759e9844b3ce807cfb5"
+    },
+    "note": "Real benchmark images, released processors/tokenizers, native helper layout; no large-model forward"
+  },
+  "synthetic_report": {
+    "result": "passed",
+    "synthetic": true,
+    "input_cases": 16,
+    "common_cases": 12,
+    "outputs": [
+      "teacher.csv",
+      "teacher.md",
+      "teacher.png",
+      "teacher.pdf",
+      "predicted.csv",
+      "predicted.md",
+      "predicted.png",
+      "predicted.pdf",
+      "coverage.json"
+    ],
+    "note": "Local-only fixture, not checked in as scientific results; figures explicitly labelled synthetic"
+  },
+  "source_download": {
+    "result": "passed",
+    "sources": {
+      "lvr": "637a9f7e17e865b1372b65f182197fbc4a5a1449",
+      "monet": "08939998d3d643a73a316e349faa34f420429153"
+    },
+    "checksum": "SHA256 of every pinned official source file",
+    "monet_observed_runner_compiles": true
+  },
+  "actual_cpu_environment": {
+    "torch": "2.8.0+cu128",
+    "transformers": "5.15.0",
+    "numpy": "2.5.3",
+    "safetensors": "0.8.0",
+    "matplotlib": "3.11.1"
+  },
+  "unrun": [
+    "trained Qwen3-VL-4B / Monet-7B / LVR-7B full 2787-case latent extraction",
+    "Monet vLLM observed worker execution on a GPU",
+    "full benchmark cosine numbers and trained-model GPU QA scores"
+  ],
+  "code_sha256": {
+    "download.py": "6bfb75562dac9a30e84bb19401ea3cc7640b3df16e4956f7484572682c0254c5",
+    "score.py": "4c4e91d2373839d3afa2dc50c6f2c62fbac6da19eb53592168f3b4918c6ce93f",
+    "check_native_similarity.py": "298e52b67fad2f281622209912da235be02e85eaa47274977e2605ed0945bba4",
+    "common.py": "7422acd92fa323fd207c16565583f3e90023584c3a7d5aca09cb87da7a4f0ed2",
+    "similarity_models.py": "99d0973ffbfc3561d3a7ce5bf35e9e9e1d5c43dc4b65f4928c0daeb87569fbfe",
+    "run.py": "0ff6feb5caf5e1b48cd7617f481a51262f5c69fe50fb547de983cb8f5d473af1",
+    "similarity_cache.py": "75251f694784697adf3de58dfb4ab22242f3eb5bc62620c6bb49e55c0a518ffe",
+    "test_native_models.py": "a9198f005e8056353d3799ecf3f19f0dc531320ac3a0f1d25a85bebab3248358",
+    "pack_benchmarks.py": "4694dbf9a80101b68e9e1d0bf701cdc64283c6a3195c292988701897b384997f",
+    "monet_observer.py": "f750e5a148c09f1d71f5c3ce147bd2e124941a6a95459bb5b457525e957298f0",
+    "download_models.py": "a9225b8b35636b2d2f7edd6ea8c4bf7831dd22514e1c948796c5f0d0063b9e04",
+    "test_ablation.py": "cfa26e3486cde4c372c692ecf87cb30bda3ad7c52d4e5593927990379f00d56e",
+    "similarity.py": "4fa2bb2e4ae312af82d288ac6a364f5f6551fe2320c7a035b510772943c1bb53",
+    "test_similarity.py": "3d91839b4ec5fc1333afe7577139fd195e14d2a0bf6db476ed3e3c6a5974b01e",
+    "similarity_stats.py": "9d132b64ab574fb562c3e80f6277d6196f5da3db244da11dea41e4ec7000f7b8"
+  }
+}
