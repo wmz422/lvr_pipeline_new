@@ -1,0 +1,135 @@
+{
+  "schema": "qwen3-latent-length-ablation-verification-v1",
+  "verified_at_utc": "2026-11-07T07:10:00.712882+00:00",
+  "base_commit": "4d1644e94d0ecfc92014ac63bc83ac5dbc0e2cd1",
+  "branch": "repro/qwen25-flow-20261028",
+  "status": "passed_cpu_verification",
+  "entry": "train_qwen3_latent_length.sh",
+  "execution_order": [
+    "latent-4 four-stage training",
+    "latent-4 full predicted evaluation",
+    "latent-16 four-stage training",
+    "latent-16 full predicted evaluation"
+  ],
+  "baseline_8": "train_qwen3_flow.sh (runs/qwen3-flow-4stage)",
+  "readme_order": [
+    "train_qwen3_flow.sh",
+    "train_qwen3_no_flow_loss.sh",
+    "train_qwen3_no_latent_align.sh",
+    "train_qwen3_latent_length.sh"
+  ],
+  "controlled_difference": "Only num_latents changes from 8 to 4 or 16; output/source-checkpoint paths are isolated for each independent run.",
+  "settings": {
+    "latent_dim": 512,
+    "flow_weight": 0.1,
+    "description_stages": [
+      "teacher_alignment",
+      "teacher_joint"
+    ],
+    "stages": [
+      "teacher_alignment",
+      "teacher_joint",
+      "warmup",
+      "joint"
+    ],
+    "optimizer_steps": {
+      "teacher_alignment": 1346,
+      "teacher_joint": 1346,
+      "warmup": 200,
+      "joint": 1346
+    },
+    "global_batch": 128,
+    "train": 172224,
+    "val": 7571,
+    "original_pixels": 2000000,
+    "crop_pixels": 262144
+  },
+  "outputs": {
+    "4": "runs/qwen3-flow-4stage-latent-4",
+    "16": "runs/qwen3-flow-4stage-latent-16"
+  },
+  "hardware_previews": {
+    "gpus": [
+      2,
+      4,
+      8
+    ],
+    "global_batch": 128,
+    "manual_hardware_configuration": true
+  },
+  "regression": {
+    "suites": [
+      34,
+      4,
+      29,
+      3,
+      45
+    ],
+    "discovered": 115,
+    "passed": 114,
+    "skipped": 1,
+    "skip_reason": "Existing official-answer fixtures unavailable",
+    "log_sha256": "0273309800ff416d730041518ed78f48a29401191663c77f685f32a1562fdb23"
+  },
+  "real_cpu_checks": {
+    "4": {
+      "status": "passed",
+      "recipes_checked": 16,
+      "processor_samples": 35,
+      "teacher_and_qa_slots": 4,
+      "data_counts": {
+        "train": 172224,
+        "val": 7571
+      },
+      "loaders": [
+        {
+          "module": "FlowDataModule",
+          "passed": true
+        },
+        {
+          "module": "StudentDataModule",
+          "passed": true
+        }
+      ],
+      "report_sha256": "effda039fec5cc6806cea7e66d72dd04120bd1dbb8d4643790f5cd726b65f991"
+    },
+    "16": {
+      "status": "passed",
+      "recipes_checked": 16,
+      "processor_samples": 35,
+      "teacher_and_qa_slots": 16,
+      "data_counts": {
+        "train": 172224,
+        "val": 7571
+      },
+      "loaders": [
+        {
+          "module": "FlowDataModule",
+          "passed": true
+        },
+        {
+          "module": "StudentDataModule",
+          "passed": true
+        }
+      ],
+      "report_sha256": "577a53d07c537d8dbe741f57d336446a19227c0a02d4a9e7179577bdc98e42b9"
+    }
+  },
+  "paired_real_processor_check": "Identical 35 sample IDs and images; each 16-slot QA/Teacher prompt has exactly 12 more tokens than the 4-slot prompt.",
+  "tiny_model_check": "Real tiny Qwen3/FLUX forward/backward for both lengths, all four stages, export, Student reload and greedy generation.",
+  "evaluation_worker_check": "CPU protocol test for 4/8/16 slots: loaded model determines collator length and predicted latent shape.",
+  "launcher_check": "Independent default/custom output paths; shared GPU flags; resume/eval-only forwarding; failures stop before the next run.",
+  "unchanged_reference_sha256": {
+    "manifests/training_data.json": "4c2d5cc5e7a655ecdae1a6cbf9187100f78b0bf330c76fec0a1fe89cd458e937",
+    "manifests/data_release.json": "3f010350069c1466c6409d34ad34552f2fddd22ab7e31f3749c177a1357318fa",
+    "manifests/qwen3_model.json": "aad5ba32ee4735ffadbbe2a7766986181ae6481b498dc14dac140cd26c7382e3",
+    "manifests/flow_model.json": "946054c3b85b108472c1881325681023fa73de11034a1c1b5f48bb6ca27fa6bb",
+    "configs/plain_reference.yaml": "6122a9b5f27419fc131b3078c70d571e3e869375f0ae6c849670cb365d1edcd1",
+    "paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu/configs/experiment.yaml": "25989e1956d015a28ae73eeb6a792fd448c6cf1fe51563a810ea39db5bbd41b7"
+  },
+  "gpu_jobs_started": 0,
+  "not_run": [
+    "Full-size 4B GPU training",
+    "Full benchmark model inference or new accuracy results"
+  ]
+}

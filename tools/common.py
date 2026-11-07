@@ -13,8 +13,10 @@ EXPERIMENT = ROOT / 'paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu'
 PLAIN = ROOT / 'paper_experiments/2026-10-27-qwen25-no-sat-4epoch'
 SUITE = ROOT / 'paper_experiments/2026-10-23-unified-benchmark/data'
 VARIANT = os.environ.get('LVR_FLOW_VARIANT', 'qwen25')
-if VARIANT not in ('qwen25', 'qwen3', 'qwen3-no-flow-loss', 'qwen3-no-latent-align'):
+LATENT_VARIANTS = {'qwen3-latent-4': 4, 'qwen3-latent-16': 16}
+if VARIANT not in ('qwen25', 'qwen3', 'qwen3-no-flow-loss', 'qwen3-no-latent-align', *LATENT_VARIANTS):
     raise ValueError(f'Unknown LVR_FLOW_VARIANT: {VARIANT}')
+NUM_LATENTS = LATENT_VARIANTS.get(VARIANT, 8)
 QWEN3 = VARIANT != 'qwen25'
 QWEN = ROOT / 'paper_experiments/models' / ('Qwen3-VL-4B-Instruct' if QWEN3 else 'Qwen2.5-VL-7B-Instruct')
 QWEN_LOCK = ROOT / 'manifests' / ('qwen3_model.json' if QWEN3 else 'qwen_model.json')
@@ -23,7 +25,8 @@ LOCAL_FLOW = ROOT / '.local' / ('flow.yaml' if not QWEN3 else (
 LOCAL_REFERENCE = ROOT / '.local' / ('plain_reference.yaml' if not QWEN3 else 'qwen3_reference.yaml')
 DEFAULT_OUTPUT = ROOT / 'runs' / {'qwen25': 'flow', 'qwen3': 'qwen3-flow-4stage',
     'qwen3-no-flow-loss': 'qwen3-no-flow-loss-4stage',
-    'qwen3-no-latent-align': 'qwen3-no-latent-align'}[VARIANT]
+    'qwen3-no-latent-align': 'qwen3-no-latent-align',
+    **{name: f'qwen3-flow-4stage-latent-{length}' for name, length in LATENT_VARIANTS.items()}}[VARIANT]
 FLOW_WEIGHT = 0.0 if VARIANT in ('qwen3-no-flow-loss', 'qwen3-no-latent-align') else 0.1
 FLUX = FLOW / 'weights/FLUX.2-klein-base-4B'
 
@@ -49,6 +52,8 @@ def flow_defaults():
     if VARIANT == 'qwen3-no-latent-align':
         defaults.update(phases=['joint'], latent_weight=0.0, teacher_description_weight=0.0,
                         source_run=str(ROOT / 'runs/qwen3-flow-4stage'))
+    if VARIANT in LATENT_VARIANTS:
+        defaults['num_latents'] = NUM_LATENTS
     return defaults
 
 

@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 from common import (ROOT, PROJECT, EXPERIMENT, VARIANT, QWEN, QWEN_LOCK, LOCAL_FLOW,
-                    DEFAULT_OUTPUT, FLOW_WEIGHT, reference_recipe, flow_defaults,
+                    DEFAULT_OUTPUT, FLOW_WEIGHT, NUM_LATENTS, reference_recipe, flow_defaults,
                     environment, python, run, write_json, verify_descriptions)
 from release import load_lock, safe_target, sha256
 
@@ -90,6 +90,8 @@ def main(argv=None):
         args.defaults = flow_defaults()
     if args.defaults['flow_weight'] != FLOW_WEIGHT:
         raise ValueError(f'Local configuration does not match {VARIANT} Flow loss weight')
+    if args.defaults.get('num_latents', 8) != NUM_LATENTS:
+        raise ValueError(f'Local configuration does not match {VARIANT} latent length')
     if not local.exists() and not any(a == '--output' or a.startswith('--output=') for a in forwarded):
         args.output = DEFAULT_OUTPUT
     plain = reference_recipe()
@@ -97,6 +99,7 @@ def main(argv=None):
     configs, steps = launch.build_recipes(args, plain, {k: counts[k] for k in ('train', 'val')},
                                          {'protocol_sha256': '${GT_PROTOCOL_SHA}'})
     summary = {'variant': VARIANT, 'base_model': str(QWEN), 'flow_loss_weight': FLOW_WEIGHT,
+               'num_latents': NUM_LATENTS, 'latent_dim': 512,
                'stages': list(configs),
                'loss_weights': {phase: {key: config['model'].get(key, 0.0) for key in (
                    'qa_loss_weight', 'description_weight', 'flow_weight', 'latent_weight')}

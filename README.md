@@ -10,17 +10,19 @@
 该目录还提供历史 **Qwen3-VL-4B 四阶段 Flow** 的公开消融权重、Monet/LVR 权重与官方推理源码下载，
 以及三种方法 Teacher / Predicted 前 8 个位置的跨 case cosine 表格和曲线复现入口。
 
-## Qwen3-VL-4B：四阶段 Flow 与两个消融
+## Qwen3-VL-4B：四阶段 Flow 与三个消融
 
-三个脚本的完整使用说明见 **[README_qwen3.md](README_qwen3.md)**。
+四个脚本的完整使用说明及实验顺序见 **[README_qwen3.md](README_qwen3.md)**。
 
 | 入口 | 流程 | 默认输出 |
 |---|---|---|
 | `train_qwen3_flow.sh` | Alignment → Teacher joint → warmup → Student joint；Teacher 有 Description 和 FLUX 重构，最后阶段无 Description | `runs/qwen3-flow-4stage` |
 | `train_qwen3_no_flow_loss.sh` | 相同四阶段，仅将两个 Teacher 阶段的 Flow 权重置零 | `runs/qwen3-no-flow-loss-4stage` |
 | `train_qwen3_no_latent_align.sh` | 复用 Flow 第二阶段导出权重，跳过 warmup，只用答案 CE 训练最后阶段 | `runs/qwen3-no-latent-align` |
+| `train_qwen3_latent_length.sh` | 依次用 4、16 个 latent 各自独立训练标准 Flow 四阶段，每组训练后自动测试 | `runs/qwen3-flow-4stage-latent-4`、`runs/qwen3-flow-4stage-latent-16` |
 
-三者使用同一份 V* 去重、训练集去 SAT 的数据、8 × 512 latent 和全局 batch 128。
+四者使用同一份 V* 去重、训练集去 SAT 的数据和全局 batch 128。
+前三个入口使用 8 × 512 latent，长度消融使用 4 × 512、16 × 512；8 latent 基线复用第一个脚本。
 均可通过 `--gpus` 配置复现设备卡数，默认在训练后自动完成全部 11 项 benchmark 和评分。
 第三个脚本从第一个训练 step 起使用 Predicted latent，答案 CE 会反传到 latent predictor。
 Qwen3 模型固定版本与文件校验仍由 `manifests/qwen3_model.json` 锁定。

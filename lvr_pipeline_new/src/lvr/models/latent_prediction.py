@@ -92,12 +92,13 @@ class LatentPrediction(pl.LightningModule):
         self.save_hyperparameters()
         self.network = VisualBottleneck.from_checkpoint(source_checkpoint, "cpu", base_model_path=base_model_path)
         source = self.network.hparams
-        if (source.gaussian or source.encoder_type != "qwen" or source.num_latents != 8
+        if (source.gaussian or source.encoder_type != "qwen" or isinstance(source.num_latents, bool)
+                or source.num_latents not in (4, 8, 16)
                 or source.latent_dim != 512 or not source.encoder_includes_original
                 or (source.encoder_uses_question and not allow_question_conditioned_teacher)
                 or source.description_image_mode != "none"):
-            raise ValueError("Expected the deterministic original+all-crops 8x512 teacher checkpoint")
-        # These fixed interface fields also allow the shared data/run audit to check this phase.
+            raise ValueError("Expected a deterministic original+all-crops 4/8/16 x 512 teacher checkpoint")
+        # Inherit the Teacher interface, including length, for the shared data/run audit.
         for key in ("num_latents", "latent_dim", "encoder_uses_question", "encoder_type",
                     "encoder_includes_original", "qformer_use_geometry", "description_image_mode"):
             self.hparams[key] = source[key]

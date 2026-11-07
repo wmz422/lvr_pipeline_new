@@ -104,10 +104,6 @@ def worker(args):
         if inference["original_pixels"] is not None or inference["processor"] != "base_model_defaults":
             raise ValueError("The authoritative protocol forbids an additional resolution cap")
         # Never call cap_qwen_pixels or load a processor from the training recipe.
-        collator = CropQACollator(processor=processor, image_root=config["suite"], original_pixels=None,
-                                  crop_pixels=262144, max_length=inference["max_input_tokens"],
-                                  system_prompt=inference["system_prompt"], include_answers=False,
-                                  include_encoder=False, num_latents=0 if config["mode"] in ("base", "plain") else 8)
         bind_json(output / "processor.json", processor.image_processor.to_dict())
         if config["mode"] == "base":
             model = VisualBottleneck.from_pretrained(config["model"], device)
@@ -121,6 +117,10 @@ def worker(args):
                       source_checkpoint=config["source_checkpoint"], base_model_path=config["model"])
         if config["expected_step"] is not None and model.checkpoint_step != config["expected_step"]:
             raise ValueError("Loaded checkpoint does not match the development-selected step")
+        collator = CropQACollator(processor=processor, image_root=config["suite"], original_pixels=None,
+                                  crop_pixels=262144, max_length=inference["max_input_tokens"],
+                                  system_prompt=inference["system_prompt"], include_answers=False,
+                                  include_encoder=False, num_latents=model.hparams.num_latents)
         network = model if config["mode"] in ("base", "plain") else model.network
         max_positions = network.qa.config.text_config.max_position_embeddings
         with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):

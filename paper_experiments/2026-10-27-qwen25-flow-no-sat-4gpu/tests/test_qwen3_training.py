@@ -54,9 +54,9 @@ class Qwen3TrainingTests(unittest.TestCase):
         self.addCleanup(context.__exit__, None, None, None)
         torch.manual_seed(42)
 
-    def teacher(self, weight, *, descriptions=False, alignment=False):
+    def teacher(self, weight, *, descriptions=False, alignment=False, num_latents=8):
         cls = DescriptionFlowTeacher if descriptions else NoDescriptionFlowTeacher
-        model = cls(str(self.root), str(self.root), train_qa=True,
+        model = cls(str(self.root), str(self.root), train_qa=True, num_latents=num_latents,
             description_weight=1.0 if descriptions else 0.0,
             qa_loss_weight=0.0 if alignment else 1.0,
             flow_model_path=str(self.flow), flow_protocol_sha256='same-gt', flow_weight=weight,
@@ -67,17 +67,17 @@ class Qwen3TrainingTests(unittest.TestCase):
         return model
 
     @staticmethod
-    def batch():
+    def batch(num_latents=8):
         def inputs(answer=False):
-            ids = torch.tensor([[2,1,3,10] + [0]*8 + ([11,12,4] if answer else [])]*2)
+            ids = torch.tensor([[2,1,3,10] + [0]*num_latents + ([11,12,4] if answer else [])]*2)
             slots = torch.zeros_like(ids, dtype=torch.bool)
-            slots[:,4:12] = True
+            slots[:,4:4 + num_latents] = True
             result = dict(input_ids=ids, attention_mask=torch.ones_like(ids), slot_mask=slots,
                           mm_token_type_ids=(ids==1).long(), image_grid_thw=torch.tensor([[1,2,2]]*2),
                           pixel_values=torch.randn(8,1536))
             if answer:
                 labels = torch.full_like(ids, -100)
-                labels[:,12:] = ids[:,12:]
+                labels[:,4 + num_latents:] = ids[:,4 + num_latents:]
                 result['labels'] = labels
             return result
         return {'ids':['a','b'], 'encoder':inputs(), 'qa':inputs(True),
@@ -86,13 +86,13 @@ class Qwen3TrainingTests(unittest.TestCase):
                         'representation':REPRESENTATION, 'gt_protocol_sha256':'same-gt'}}
 
     @classmethod
-    def description_batch(cls):
-        batch = cls.batch()
-        ids = torch.tensor([[13,14] + [0]*8 + [15,16,4]]*2)
+    def description_batch(cls, num_latents=8):
+        batch = cls.batch(num_latents)
+        ids = torch.tensor([[13,14] + [0]*num_latents + [15,16,4]]*2)
         slots = torch.zeros_like(ids, dtype=torch.bool)
-        slots[:,2:10] = True
+        slots[:,2:2 + num_latents] = True
         labels = torch.full_like(ids, -100)
-        labels[:,10:] = ids[:,10:]
+        labels[:,2 + num_latents:] = ids[:,2 + num_latents:]
         batch['description'] = dict(input_ids=ids, attention_mask=torch.ones_like(ids),
             slot_mask=slots, mm_token_type_ids=torch.zeros_like(ids), labels=labels)
         return batch
@@ -193,12 +193,12 @@ class Qwen3TrainingTests(unittest.TestCase):
             ablation.on_load_checkpoint(checkpoint)
 
     def test_four_stage_description_training_export_and_final_no_description(self):
-        for weight in (.1, 0):
-            with self.subTest(flow_weight=weight):
-                directory = self.root / f'four-stage-{weight}'
+        for num_latents, weight in ((8, .1), (8, 0), (4, .1), (16, .1)):
+            with self.subTest(num_latents=num_latents, flow_weight=weight):
+                directory = self.root / f'four-stage-{num_latents}-{weight}'
                 directory.mkdir()
-                inputs = self.description_batch()
-                first = self.teacher(weight, descriptions=True, alignment=True)
+                inputs = self.description_batch(num_latents)
+                first = self.teacher(weight, descriptions=True, alignment=True, num_latents=num_latents)
                 optimizer = first.configure_optimizers()['optimizer']
                 with patch.object(first, 'log_dict') as log, torch.autocast('cpu', dtype=torch.bfloat16):
                     loss = first.training_step(inputs, 0)
@@ -210,7 +210,7 @@ class Qwen3TrainingTests(unittest.TestCase):
                 optimizer.step()
                 first_path = directory / 'alignment.ckpt'
                 self.save(first, first_path, teacher=True)
-                second = self.teacher(weight, descriptions=True)
+                second = self.teacher(weight, descriptions=True, num_latents=num_latents)
                 second.initialize_from_checkpoint(first_path)
                 optimizer = second.configure_optimizers()['optimizer']
                 with patch.object(second, 'log_dict') as log, torch.autocast('cpu', dtype=torch.bfloat16):
@@ -230,11 +230,14 @@ class Qwen3TrainingTests(unittest.TestCase):
                 previous = None
                 for phase in ('warmup', 'joint'):
                     student = LatentPrediction(str(source), prediction_phase=phase, description_weight=0, lr_schedule_steps=2)
+                    self.assertEqual(student.hparams.num_latents, num_latents)
+                    self.assertEqual(tuple(student.prediction_queries.shape), (num_latents, 128))
                     if previous:
                         student.initialize_from_checkpoint(previous)
                     optimizer = student.configure_optimizers()['optimizer']
                     with torch.autocast('cpu', dtype=torch.bfloat16):
                         values = student(student_inputs, step=500)
+                    self.assertEqual(tuple(values['predicted'].shape), (2, num_latents, 512))
                     self.assertNotIn('description_ce', values)
                     values['loss'].backward()
                     optimizer.step()
@@ -244,6 +247,7 @@ class Qwen3TrainingTests(unittest.TestCase):
                 with torch.inference_mode(), torch.autocast('cpu', dtype=torch.bfloat16):
                     prompt = prediction_prompt(student_inputs['qa'], 0)
                     latent = restored.predict_latents(prompt)
+                    self.assertEqual(tuple(latent.shape), (2, num_latents, 512))
                     tokens = restored.network.generate_answers(prompt, latent, max_new_tokens=2, pad_token_id=0)
                 self.assertEqual(tokens.shape[0], 2)
 

@@ -28,8 +28,8 @@ class FlowVisualBottleneck(VisualBottleneck):
                   flow_generator_batch_size: int=16,flow_vae_batch_size: int=4,flow_latent_cache_bytes: int=134217728):
         arguments=dict(locals());arguments.pop('self');arguments.pop('__class__',None)
         flow_args={key:arguments.pop(key) for key in list(arguments) if key.startswith('flow_')}
-        if gaussian or reconstruction_weight or num_latents!=8 or latent_dim!=512:
-            raise ValueError('Flow experiment uses deterministic eight-token latent and disables old reconstruction')
+        if gaussian or reconstruction_weight or isinstance(num_latents,bool) or num_latents not in (4,8,16) or latent_dim!=512:
+            raise ValueError('Flow experiment requires deterministic 4/8/16 x 512 latents and disables old reconstruction')
         if not math.isfinite(flow_weight) or flow_weight<0:raise ValueError('Specify a finite nonnegative flow loss weight')
         if not flow_protocol_sha256:raise ValueError('Require a bound GT protocol')
         config=json.loads((Path(flow_model_path)/'transformer/config.json').read_text())

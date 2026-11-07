@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,7 +31,8 @@ print(json.dumps({'recipes':configs, 'steps':steps, 'output':str(DEFAULT_OUTPUT)
  'model':str(QWEN), 'local':str(LOCAL_FLOW), 'bootstrap':bootstrap_binding(),
  'evaluation':launch.evaluation_command(args, plain, steps), 'download_repo':specs('qwen')[1]}))
 '''
-        for variant in ('qwen25', 'qwen3', 'qwen3-no-flow-loss', 'qwen3-no-latent-align'):
+        for variant in ('qwen25', 'qwen3', 'qwen3-no-flow-loss', 'qwen3-no-latent-align',
+                        'qwen3-latent-4', 'qwen3-latent-16'):
             env = dict(os.environ, LVR_FLOW_VARIANT=variant, CUDA_VISIBLE_DEVICES='', OMP_NUM_THREADS='2')
             # Each child previews its own profile, as the shell entry does.
             env.pop('LVR_FLOW_CONFIG', None)
@@ -86,11 +88,11 @@ print(json.dumps({'recipes':configs, 'steps':steps, 'output':str(DEFAULT_OUTPUT)
         self.assertEqual(report['evaluation'][report['evaluation'].index('--source-checkpoint') + 1], source)
 
     def test_variants_bind_separate_outputs_and_correct_final_evaluation(self):
-        self.assertEqual(len({r['local'] for r in self.reports.values()}), 4)
-        self.assertEqual(len({r['output'] for r in self.reports.values()}), 4)
+        self.assertEqual(len({r['local'] for r in self.reports.values()}), 6)
+        self.assertEqual(len({r['output'] for r in self.reports.values()}), 6)
         for variant, report in self.reports.items():
             expected = {'teacher_joint':1346, 'warmup':200, 'joint':1346}
-            if variant in ('qwen3', 'qwen3-no-flow-loss'):
+            if variant != 'qwen25' and variant != 'qwen3-no-latent-align':
                 expected = {'teacher_alignment':1346, **expected}
             elif variant == 'qwen3-no-latent-align':
                 expected = {'joint':1346}
@@ -105,6 +107,94 @@ print(json.dumps({'recipes':configs, 'steps':steps, 'output':str(DEFAULT_OUTPUT)
             self.assertEqual(report['bootstrap']['variant'], variant)
             self.assertIn('qwen3_model.json' if variant != 'qwen25' else 'qwen_model.json',
                           report['bootstrap']['locks'])
+
+    def test_length_ablation_changes_only_the_number_of_slots_from_standard_flow(self):
+        full = self.normalized(self.reports['qwen3'])
+        for length in (4, 16):
+            with self.subTest(num_latents=length):
+                report = self.reports[f'qwen3-latent-{length}']
+                configs = self.normalized(report)
+                for phase, config in configs.items():
+                    self.assertEqual(config['data']['num_latents'], length)
+                    config['data']['num_latents'] = 8
+                    if phase.startswith('teacher_'):
+                        self.assertEqual(config['model']['num_latents'], length)
+                        config['model']['num_latents'] = 8
+                self.assertEqual(configs, full)
+                self.assertEqual(report['steps'], self.reports['qwen3']['steps'])
+
+    @staticmethod
+    def length_previews(*arguments):
+        env = dict(os.environ, LVR_TRAIN_PYTHON=sys.executable, CUDA_VISIBLE_DEVICES='')
+        output = subprocess.check_output(
+            ['bash', str(ROOT / 'train_qwen3_latent_length.sh'), '--dry-run', *arguments],
+            cwd='/tmp', env=env, text=True)
+        decoder, reports = json.JSONDecoder(), []
+        while output.strip():
+            report, end = decoder.raw_decode(output.lstrip())
+            reports.append(report)
+            output = output.lstrip()[end:]
+        return reports
+
+    def test_length_entry_trains_and_evaluates_both_lengths_with_independent_outputs(self):
+        for gpus in (2, 4, 8):
+            with self.subTest(gpus=gpus):
+                reports = self.length_previews('--gpus', str(gpus))
+                self.assertEqual([r['num_latents'] for r in reports], [4, 16])
+                for report in reports:
+                    length = report['num_latents']
+                    self.assertEqual(report['output'], str(ROOT / f'runs/qwen3-flow-4stage-latent-{length}'))
+                    self.assertEqual(report['stages'], ['teacher_alignment', 'teacher_joint', 'warmup', 'joint'])
+                    self.assertEqual(report['flow_loss_weight'], .1)
+                    self.assertFalse(report['gpu_started'])
+                    self.assertFalse(report['downloads_started'])
+                    for hardware in report['hardware']['phases'].values():
+                        self.assertEqual(hardware['gpus'], gpus)
+                        self.assertEqual(hardware['global_batch'], 128)
+                    command = report['evaluation']
+                    self.assertEqual(command[command.index('--checkpoint') + 1],
+                                     report['output'] + '/joint/checkpoints/last_full.ckpt')
+                    self.assertEqual(command[command.index('--source-checkpoint') + 1],
+                                     report['output'] + '/teacher_joint/checkpoints/student_source.ckpt')
+                    self.assertEqual(int(command[command.index('--gpus') + 1]), gpus)
+
+    def test_length_entry_separates_custom_parent_paths_and_forwards_eval_hardware(self):
+        for option in (['--output', 'runs/length test'], ['--output=runs/length test']):
+            reports = self.length_previews(*option, '--eval-gpus', '2', '--resume')
+            self.assertEqual([r['output'] for r in reports],
+                             [str(ROOT / f'runs/length test/latent-{n}') for n in (4, 16)])
+            for report in reports:
+                command = report['evaluation']
+                self.assertEqual(command[command.index('--gpus') + 1], '2')
+
+    def test_length_entry_forwards_resume_and_stops_if_a_run_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            journal, stub = directory / 'calls.jsonl', directory / 'python'
+            stub.write_text(f'#!{sys.executable}\n' + '''
+import json, os, sys
+with open(os.environ['LVR_TEST_JOURNAL'], 'a') as stream:
+    stream.write(json.dumps({'variant':os.environ['LVR_FLOW_VARIANT'], 'args':sys.argv[1:]}) + '\\n')
+sys.exit(9 if os.environ['LVR_FLOW_VARIANT'] == os.environ.get('LVR_TEST_FAIL_VARIANT') else 0)
+''')
+            stub.chmod(0o755)
+            env = dict(os.environ, LVR_TRAIN_PYTHON=str(stub), LVR_TEST_JOURNAL=str(journal))
+            command = ['bash', str(ROOT / 'train_qwen3_latent_length.sh'), '--gpus', '2',
+                       '--resume', '--eval-only', '--output', 'runs/length test']
+            for failure, expected_variants in (('', ['qwen3-latent-4', 'qwen3-latent-16']),
+                                                ('qwen3-latent-4', ['qwen3-latent-4']),
+                                                ('qwen3-latent-16', ['qwen3-latent-4', 'qwen3-latent-16'])):
+                with self.subTest(failure=failure):
+                    journal.unlink(missing_ok=True)
+                    result = subprocess.run(command, cwd='/tmp', env=dict(env, LVR_TEST_FAIL_VARIANT=failure),
+                                            capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 9 if failure else 0, result.stderr)
+                    calls = [json.loads(line) for line in journal.read_text().splitlines()]
+                    self.assertEqual([row['variant'] for row in calls], expected_variants)
+                    for row in calls:
+                        length = row['variant'].rsplit('-', 1)[1]
+                        self.assertEqual(row['args'][1:], ['--gpus', '2', '--resume', '--eval-only',
+                                                         '--output', f'runs/length test/latent-{length}'])
 
     def test_shell_entries_preview_correct_model_and_weight_from_another_directory(self):
         for script, weight, output in (('train_qwen3_flow.sh', .1, 'qwen3-flow-4stage'),

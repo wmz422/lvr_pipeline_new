@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -62,6 +63,56 @@ class QueueAndResumeTests(unittest.TestCase):
         module.bind_json(path, {"checkpoint": "A", "suite": "full"})
         with self.assertRaises(ValueError):
             module.bind_json(path, {"checkpoint": "B", "suite": "full"})
+
+    def test_predicted_worker_uses_the_loaded_checkpoint_length(self):
+        import torch
+        from PIL import Image
+        module = script("evaluate")
+        image = self.root / "image.png"
+        Image.new("RGB", (32, 32), "blue").save(image)
+        row = {"id":"case", "benchmark":"task", "task":"task", "question":"Which object?",
+               "images":[{"path":image.name, "sha256":file_sha(image), "width":32, "height":32}]}
+        inference = {"original_pixels":None, "processor":"base_model_defaults",
+                     "max_input_tokens":1024, "max_new_tokens":2, "system_prompt":"test"}
+        processor = SimpleNamespace(tokenizer=SimpleNamespace(decode=lambda *a, **k: "answer"),
+            image_processor=SimpleNamespace(patch_size=16, to_dict=lambda: {"native":True}))
+        for length in (4, 8, 16):
+            with self.subTest(num_latents=length):
+                output = self.root / str(length)
+                output.mkdir()
+                write_json(output / "run_config.json", {"suite":str(self.root), "suite_manifest_sha256":"same",
+                    "code":{}, "shards":1, "checkpoint_identity":None, "source_checkpoint_identity":None,
+                    "processor_files":{}, "model":"base", "mode":"predicted", "checkpoint":"joint",
+                    "source_checkpoint":"teacher", "expected_step":1})
+                def collator(**kwargs):
+                    self.assertEqual(kwargs["num_latents"], length)
+                    self.assertIsNone(kwargs["original_pixels"])
+                    return lambda items: {"qa":{"input_ids":torch.ones(1, length + 4, dtype=torch.long),
+                        "slot_mask":torch.tensor([[False]*4 + [True]*length]),
+                        "image_grid_thw":torch.tensor([[1, 2, 2]])}}
+                def predict(qa):
+                    self.assertEqual(int(qa["slot_mask"].sum()), length)
+                    return torch.ones(1, length, 512)
+                def generate(qa, latent, **kwargs):
+                    self.assertEqual(tuple(latent.shape), (1, length, 512))
+                    return torch.tensor([[10]])
+                network = SimpleNamespace(generate_answers=generate,
+                    qa=SimpleNamespace(config=SimpleNamespace(text_config=SimpleNamespace(max_position_embeddings=1024))))
+                model = SimpleNamespace(hparams=SimpleNamespace(num_latents=length), checkpoint_step=1,
+                                        predict_latents=predict, network=network)
+                # Execute the worker protocol on CPU; native model gradients/reload are covered separately.
+                with patch.object(module, "load_suite", return_value=([row], {"inference":inference}, {})), \
+                     patch.object(module, "file_sha", return_value="same"), \
+                     patch("transformers.AutoProcessor.from_pretrained", return_value=processor), \
+                     patch("lvr.models.latent_prediction.LatentPrediction.from_checkpoint", return_value=model), \
+                     patch("lvr.data.crop_qa.CropQACollator", side_effect=collator), \
+                     patch.object(torch.cuda, "set_device"), patch.object(torch.cuda, "reset_peak_memory_stats"), \
+                     patch.object(torch.cuda, "max_memory_reserved", return_value=0), \
+                     patch.object(torch.Tensor, "to", lambda tensor, *a, **k: tensor), \
+                     patch.object(torch, "autocast", return_value=contextlib.nullcontext()):
+                    module.worker(SimpleNamespace(output=output, shard_index=0, smoke=False))
+                status = json.loads((output / "shards/00/status.json").read_text())
+                self.assertEqual(status, {"status":"complete", "generations":1})
 
     def test_complete_dev_selection_is_rechecked_and_bound_to_export(self):
         module = script("run_after")

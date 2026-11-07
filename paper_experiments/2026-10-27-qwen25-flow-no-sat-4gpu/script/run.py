@@ -205,6 +205,9 @@ def load_inputs(args):
 
 def build_recipes(args, plain, counts, settings, *, preflight=False):
     output = args.output / "preflight" if preflight else args.output
+    num_latents = args.defaults.get("num_latents", 8)
+    if isinstance(num_latents, bool) or num_latents not in (4, 8, 16):
+        raise ValueError("Flow latent length must be 4, 8 or 16")
     configs, steps = {}, {}
     for phase in phases(args):
         teacher = teacher_phase(phase)
@@ -252,7 +255,7 @@ def build_recipes(args, plain, counts, settings, *, preflight=False):
         description_weight = args.defaults.get("teacher_description_weight", 0.0) if teacher else (
             args.defaults.get("joint_description_weight", 0.0) if phase == "joint" else 0.0)
         answer_only = not teacher and args.defaults.get("latent_weight", 1.0) == 0
-        data.update(batch_size=batch, num_latents=8, include_encoder=not answer_only,
+        data.update(batch_size=batch, num_latents=num_latents, include_encoder=not answer_only,
                     include_descriptions=bool(description_weight),
                     caption_path=args.defaults.get("description_captions") if description_weight else None,
                     description_image_mode="none", encoder_uses_question=args.teacher_sees_question and not answer_only,
@@ -293,7 +296,7 @@ def build_recipes(args, plain, counts, settings, *, preflight=False):
             "FlowDeepSpeedPrecision" if teacher else "MatchedDeepSpeedPrecision"),
             "init_args": {"precision": "bf16-mixed", "reference_accumulation": reference_accumulation}}]
         if teacher:
-            config["model"].update(num_latents=8, description_weight=description_weight,
+            config["model"].update(num_latents=num_latents, description_weight=description_weight,
                 qa_loss_weight=0.0 if phase == "teacher_alignment" else 1.0,
                 encoder_type="qwen", encoder_uses_question=args.teacher_sees_question,
                 lr_schedule_steps=updates, reconstruction_weight=0.0,
@@ -481,6 +484,9 @@ def bind_source_run(args, plain, counts, inputs):
     if (model["flow_weight"] != 0.1 or model["description_weight"] != 1.0
             or model["qa_loss_weight"] != 1.0):
         raise ValueError("Source stage 2 must use Flow 0.1, Description 1.0 and QA 1.0")
+    expected_latents = args.defaults.get("num_latents", 8)
+    if model["num_latents"] != expected_latents or config["data"]["num_latents"] != expected_latents:
+        raise ValueError("Source stage 2 latent length differs from the requested experiment")
     if source_plan["inputs"]["counts"] != counts:
         raise ValueError("Source training/validation counts differ")
     for key in ("splits", "model_repository", "model_revision"):

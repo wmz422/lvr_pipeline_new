@@ -26,14 +26,15 @@ class Qwen3HandoffTests(unittest.TestCase):
         source = Path(self.directory.name)
         (source/'teacher_joint/checkpoints').mkdir(parents=True)
         (source/'teacher_joint/checkpoints/student_source.ckpt').write_bytes(b'test checkpoint identity')
-        self.args = SimpleNamespace(source_run=source)
+        self.args = SimpleNamespace(source_run=source, defaults={})
         self.counts = {'train':172224, 'val':7571}
         self.inputs = {'counts':self.counts, 'splits':{'train':{'sha256':'same-data'}},
                        'model_repository':'Qwen/Qwen3-VL-4B-Instruct', 'model_revision':'same-revision'}
         data = {key:str(ROOT/key) for key in ('train_path','val_path','train_boxes_path','val_boxes_path',
                 'additional_train_path','additional_val_path','processor_name_or_path')}
+        data['num_latents'] = 8
         self.plain = {'data':data}
-        self.config = {'model':{'flow_weight':.1,'description_weight':1.,'qa_loss_weight':1.},'data':data}
+        self.config = {'model':{'flow_weight':.1,'description_weight':1.,'qa_loss_weight':1.,'num_latents':8},'data':data}
         self.plan = {'phases':['teacher_alignment','teacher_joint','warmup','joint'],
                      'recipes':{'teacher_joint':self.config},'inputs':self.inputs,
                      'optimizer_steps':{'teacher_joint':1346}}
@@ -79,6 +80,15 @@ class Qwen3HandoffTests(unittest.TestCase):
         (self.args.source_run/'teacher_joint/complete.json').write_text(json.dumps(self.done))
         with self.assertRaisesRegex(ValueError,'not complete'):
             self.bind()
+
+    def test_answer_only_cannot_accidentally_reuse_a_different_length_teacher(self):
+        for length in (4, 16):
+            with self.subTest(num_latents=length):
+                self.config['model']['num_latents'] = length
+                self.config['data']['num_latents'] = length
+                self.write_plan()
+                with self.assertRaisesRegex(ValueError, 'latent length differs'):
+                    self.bind()
 
     def test_predicted_only_loader_requires_explicit_mode_and_forbids_auxiliary_branches(self):
         from reconstruction_experiment.data import StudentDataModule

@@ -60,6 +60,9 @@ def check_recipes(args, plain, counts, settings):
                 assert parsed.data.include_encoder == (teacher or parsed.model.latent_weight > 0)
                 assert parsed.data.encoder_uses_question == (sees_question and parsed.data.include_encoder)
                 assert parsed.data.original_pixels == plain["data"]["original_pixels"]
+                assert parsed.data.num_latents == args.defaults.get("num_latents", 8)
+                if teacher:
+                    assert parsed.model.num_latents == parsed.data.num_latents
                 assert parsed.trainer.devices * parsed.data.batch_size * parsed.trainer.accumulate_grad_batches == 128
                 reference_batch = args.defaults["teacher_batch_size" if teacher else "student_batch_size"]
                 assert config["trainer"]["plugins"][0]["init_args"]["reference_accumulation"] == (
@@ -69,6 +72,7 @@ def check_recipes(args, plain, counts, settings):
                     expected_root = args.output / "preflight" if preflight else args.output
                     assert callback["init_args"]["dirpath"] == str(expected_root / phase / "checkpoints")
                 checked.append({"phase": phase, "preflight": preflight, "teacher_sees_question": sees_question,
+                                "num_latents": parsed.data.num_latents,
                                 "batch": parsed.data.batch_size, "accumulation": parsed.trainer.accumulate_grad_batches})
     return checked
 
@@ -98,7 +102,7 @@ def check_real_loader(args, plain, output):
         run_worker(cache_root, 0, 1, "cpu")
         finalize(cache_root)
     data.pop("train_length_manifest_path", None)
-    data.update(num_latents=8, include_encoder=args.defaults.get("latent_weight", 1.0) > 0,
+    data.update(num_latents=args.defaults.get("num_latents", 8), include_encoder=args.defaults.get("latent_weight", 1.0) > 0,
                 include_descriptions=False, caption_path=None, max_length=args.defaults["max_length"],
                 batch_size=2, num_workers=0, val_num_workers=0, pin_memory=False, persistent_workers=False)
     if not data["include_encoder"]:
@@ -197,8 +201,9 @@ def main():
     processor.tokenizer.padding_side = "right"
     cap_qwen_pixels(processor, data["original_pixels"])
     needs_encoder = args.defaults.get("latent_weight", 1.0) > 0
+    num_latents = args.defaults.get("num_latents", 8)
     def collator(question=False, descriptions=False):
-        return CropQACollator(processor, data["image_root"], num_latents=8,
+        return CropQACollator(processor, data["image_root"], num_latents=num_latents,
             original_pixels=data["original_pixels"], crop_pixels=data["crop_pixels"],
             max_length=args.defaults["max_length"], include_encoder=needs_encoder, qa_crops=False,
             encoder_uses_question=question, include_descriptions=descriptions,
@@ -207,9 +212,9 @@ def main():
     for item in selected.values():
         batch = collator()([item])
         assert "description" not in batch
-        assert batch["qa"]["slot_mask"].sum() == 8
+        assert batch["qa"]["slot_mask"].sum() == num_latents
         if needs_encoder:
-            assert "labels" not in batch["encoder"] and batch["encoder"]["slot_mask"].sum() == 8
+            assert "labels" not in batch["encoder"] and batch["encoder"]["slot_mask"].sum() == num_latents
         else:
             assert "encoder" not in batch
         if args.defaults.get("teacher_description_weight", 0):
@@ -218,7 +223,8 @@ def main():
             assert not described["mm_token_type_ids"].any() and (described["labels"] != -100).any()
         original_count = len(item.get("images") or [item["question_image"]])
         assert len(batch["qa"]["image_grid_thw"]) == original_count
-        records.append({"id": item["id"], "qa_tokens": batch["qa"]["input_ids"].shape[1],
+        records.append({"id": item["id"], "num_latents": num_latents,
+                        "qa_tokens": batch["qa"]["input_ids"].shape[1],
                         "encoder_tokens": batch["encoder"]["input_ids"].shape[1] if needs_encoder else 0,
                         "original_images": original_count,
                         "encoder_images": len(batch["encoder"]["image_grid_thw"]) if needs_encoder else 0})
@@ -257,7 +263,8 @@ def main():
         "teacher_question_toggle_and_answer_exclusion": "passed", "processor_samples": records,
         "reconstruction_examples": target_examples,
         "real_datamodule_checks": loaders,
-        "base_model": data["processor_name_or_path"], "flow_loss_weight": args.defaults["flow_weight"],
+        "base_model": data["processor_name_or_path"], "num_latents": num_latents,
+        "flow_loss_weight": args.defaults["flow_weight"],
         "limits": "Representative real processor checks; full-model GPU preflight remains required."})
     print("CPU_CHECKS_PASSED", a.output / "validation.json", flush=True)
 
