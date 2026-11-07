@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 from common import (ROOT, PROJECT, EXPERIMENT, FLOW, QWEN, QWEN3, VARIANT, FLUX, SUITE,
-                    LOCAL_FLOW, environment, write_json)
+                    LOCAL_FLOW, environment, write_json, verify_descriptions)
 from release import sha256
 
 
@@ -41,6 +41,8 @@ def main():
         raise ValueError(f'Scoring environment differs: {score_env}')
     report = {'status': 'passed', 'gpu_used': False, 'versions': actual, 'scoring': score_env,
               'scope': 'environment' if args.environment_only else 'environment_and_inputs'}
+    if QWEN3:
+        report['descriptions'] = verify_descriptions()
     if not args.environment_only:
         import yaml
         from prepare_training import read_records, CLEAN, NOSAT

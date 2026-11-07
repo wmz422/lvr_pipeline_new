@@ -1,5 +1,6 @@
 """Repository paths and subprocess environments; no source-workspace dependency."""
 import json
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -12,15 +13,18 @@ EXPERIMENT = ROOT / 'paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu'
 PLAIN = ROOT / 'paper_experiments/2026-10-27-qwen25-no-sat-4epoch'
 SUITE = ROOT / 'paper_experiments/2026-10-23-unified-benchmark/data'
 VARIANT = os.environ.get('LVR_FLOW_VARIANT', 'qwen25')
-if VARIANT not in ('qwen25', 'qwen3', 'qwen3-no-flow-loss'):
+if VARIANT not in ('qwen25', 'qwen3', 'qwen3-no-flow-loss', 'qwen3-no-latent-align'):
     raise ValueError(f'Unknown LVR_FLOW_VARIANT: {VARIANT}')
 QWEN3 = VARIANT != 'qwen25'
 QWEN = ROOT / 'paper_experiments/models' / ('Qwen3-VL-4B-Instruct' if QWEN3 else 'Qwen2.5-VL-7B-Instruct')
 QWEN_LOCK = ROOT / 'manifests' / ('qwen3_model.json' if QWEN3 else 'qwen_model.json')
-LOCAL_FLOW = ROOT / '.local' / ('flow.yaml' if not QWEN3 else f'{VARIANT}.yaml')
+LOCAL_FLOW = ROOT / '.local' / ('flow.yaml' if not QWEN3 else (
+    f'{VARIANT}.yaml' if VARIANT == 'qwen3-no-latent-align' else f'{VARIANT}-four-stage.yaml'))
 LOCAL_REFERENCE = ROOT / '.local' / ('plain_reference.yaml' if not QWEN3 else 'qwen3_reference.yaml')
-DEFAULT_OUTPUT = ROOT / 'runs' / ('flow' if not QWEN3 else ('qwen3-flow' if VARIANT == 'qwen3' else 'qwen3-no-flow-loss'))
-FLOW_WEIGHT = 0.0 if VARIANT == 'qwen3-no-flow-loss' else 0.1
+DEFAULT_OUTPUT = ROOT / 'runs' / {'qwen25': 'flow', 'qwen3': 'qwen3-flow-4stage',
+    'qwen3-no-flow-loss': 'qwen3-no-flow-loss-4stage',
+    'qwen3-no-latent-align': 'qwen3-no-latent-align'}[VARIANT]
+FLOW_WEIGHT = 0.0 if VARIANT in ('qwen3-no-flow-loss', 'qwen3-no-latent-align') else 0.1
 FLUX = FLOW / 'weights/FLUX.2-klein-base-4B'
 
 
@@ -38,7 +42,27 @@ def flow_defaults():
     defaults = yaml.safe_load((EXPERIMENT / 'configs/experiment.yaml').read_text().replace('${REPO}', str(ROOT)))
     defaults.update(plain_recipe=str(LOCAL_REFERENCE), output=str(DEFAULT_OUTPUT),
                     flow_weight=FLOW_WEIGHT)
+    if QWEN3:
+        defaults.update(phases=['teacher_alignment', 'teacher_joint', 'warmup', 'joint'],
+                        teacher_description_weight=1.0, joint_description_weight=0.0,
+                        description_captions=str(ROOT / 'assets/qwen3_descriptions/captions.jsonl.gz'))
+    if VARIANT == 'qwen3-no-latent-align':
+        defaults.update(phases=['joint'], latent_weight=0.0, teacher_description_weight=0.0,
+                        source_run=str(ROOT / 'runs/qwen3-flow-4stage'))
     return defaults
+
+
+def verify_descriptions():
+    """The historical caption sidecar ships with code; sample indexes stay unchanged."""
+    manifest = ROOT / 'manifests/qwen3_descriptions.json'
+    lock = json.loads(manifest.read_text())
+    path = ROOT / lock['path']
+    if (path.stat().st_size != lock['bytes']
+            or hashlib.sha256(path.read_bytes()).hexdigest() != lock['sha256']
+            or hashlib.sha256((ROOT / 'manifests/training_data.json').read_bytes()).hexdigest()
+            != lock['training_data_manifest_sha256']):
+        raise ValueError('Frozen Qwen3 descriptions or training-data binding differ')
+    return lock
 
 
 def environment(*, gpu=True):

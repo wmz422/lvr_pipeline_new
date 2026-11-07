@@ -10,68 +10,24 @@
 该目录还提供历史 **Qwen3-VL-4B 四阶段 Flow** 的公开消融权重、Monet/LVR 权重与官方推理源码下载，
 以及三种方法 Teacher / Predicted 前 8 个位置的跨 case cosine 表格和曲线复现入口。
 
-## Qwen3-VL-4B-Instruct 与去 Flow loss 消融
+## Qwen3-VL-4B：四阶段 Flow 与两个消融
 
-新增两个完整实验入口。Qwen3 使用官方 `Qwen/Qwen3-VL-4B-Instruct`，固定 revision
-`ebb281ec70b05090aa6165b016eac8ec08e71b17`；12 个配置、tokenizer 和权重文件的 SHA256
-锁定在 `manifests/qwen3_model.json`。训练与推理均使用 Qwen3 原生 processor。
+三个脚本的完整使用说明见 **[README_qwen3.md](README_qwen3.md)**。
 
-```bash
-# Qwen3 + Flow：准备数据、缓存、训练三阶段、逐阶段验证、最终完整评测。
-bash train_qwen3_flow.sh
+| 入口 | 流程 | 默认输出 |
+|---|---|---|
+| `train_qwen3_flow.sh` | Alignment → Teacher joint → warmup → Student joint；Teacher 有 Description 和 FLUX 重构，最后阶段无 Description | `runs/qwen3-flow-4stage` |
+| `train_qwen3_no_flow_loss.sh` | 相同四阶段，仅将两个 Teacher 阶段的 Flow 权重置零 | `runs/qwen3-no-flow-loss-4stage` |
+| `train_qwen3_no_latent_align.sh` | 复用 Flow 第二阶段导出权重，跳过 warmup，只用答案 CE 训练最后阶段 | `runs/qwen3-no-latent-align` |
 
-# Qwen3 去掉 Flow loss：从同一 Instruct 基座重新开始同样的三阶段实验。
-bash train_qwen3_no_flow_loss.sh
-```
-
-| 入口 | Teacher 目标 | 默认输出 |
-| --- | --- | --- |
-| `train_qwen3_flow.sh` | QA CE + 0.1 × Flow MSE | `runs/qwen3-flow` |
-| `train_qwen3_no_flow_loss.sh` | QA CE + 0 × Flow MSE | `runs/qwen3-no-flow-loss` |
-| `train_flow.sh` | 原 Qwen2.5 配方 | `runs/flow` |
-
-两项新实验沿用下面冻结的 dataset、样本顺序、去 SAT 筛选、benchmark、分辨率预算、
-BF16、seed、学习率、冻结策略、8 × 512 latent、batch、梯度缩放、ZeRO/offload 和 checkpoint 策略。
-Teacher / Warmup / Joint 仍为 **1,346 / 200 / 1,346 updates**，全局 batch 为 **128**，
-epoch 尾批仍为 64 条。Warmup 和 Joint 的 latent alignment、QA 目标均保持原值。
-Qwen2.5 的 Plain token 长度清单不参与 Qwen3 Flow；Flow 继续使用原来的 layout 分桶。
-
-消融与完整 Qwen3 配方的有效差异只有 Teacher 的 `flow_weight: 0.1 → 0.0` 和各自输出路径。
-消融仍计算 Flow MSE 作为诊断，保留相同重建输入、离线 VAE 缓存、随机数消耗和优化器参数分组；
-该项对训练梯度的贡献为零，因此仍需要 FLUX 权重与缓存，并不减少这条分支的计算开销。
-两项实验都从 Instruct 权重独立训练 Teacher，再用各自 Teacher 初始化 Warmup / Joint。
-配置、模型锁和损失权重写入运行绑定；跨变体恢复会被拒绝。
-
-每阶段保留验证，Joint 完成后自动用该实验最终 checkpoint 跑相同的 **11 项 benchmark**，
-检查 9,957 条记录、10,107 次生成及完整评分，输出 `evaluation/predicted/summary.json`
-和 `main_table.md`。默认命令包含最终测试。
-
-两个新脚本接受下方 `train_flow.sh` 的相同参数，包括 `--gpus`、各阶段 batch、ZeRO、
-offload、`--output`、`--resume` 和独立 `--preflight`。例如：
-
-```bash
-bash train_qwen3_flow.sh --dry-run
-bash train_qwen3_no_flow_loss.sh --dry-run
-bash train_qwen3_flow.sh --output runs/qwen3-flow --resume
-bash train_qwen3_no_flow_loss.sh --output runs/qwen3-no-flow-loss --resume
-
-# 已完成训练后，只补跑该变体最终评测。
-bash train_qwen3_no_flow_loss.sh --eval-only --resume
-
-# 手动准备或检查时，用同一变体环境选择对应模型和配置。
-LVR_FLOW_VARIANT=qwen3 .venv/bin/python reproduce.py configure
-LVR_FLOW_VARIANT=qwen3 .venv/bin/python reproduce.py download-models
-LVR_FLOW_VARIANT=qwen3 .venv/bin/python reproduce.py cpu-check --output runs/qwen3-cpu-check
-# 消融对应 LVR_FLOW_VARIANT=qwen3-no-flow-loss。
-```
-
-首次执行会按下面相同方式安装环境并恢复固定数据；已配置旧版环境也可以直接运行新脚本。
-两项新实验分别使用 `.local/qwen3.yaml` 和 `.local/qwen3-no-flow-loss.yaml`，不会覆盖旧配方。
-本地验证范围和实际结果见 [Qwen3 验证记录](docs/qwen3_experiments.md)。
+三者使用同一份 V* 去重、训练集去 SAT 的数据、8 × 512 latent 和全局 batch 128。
+均可通过 `--gpus` 配置复现设备卡数，默认在训练后自动完成全部 11 项 benchmark 和评分。
+第三个脚本从第一个训练 step 起使用 Predicted latent，答案 CE 会反传到 latent predictor。
+Qwen3 模型固定版本与文件校验仍由 `manifests/qwen3_model.json` 锁定。
 
 ## 固定的实验条件
 
-下表记录原 Qwen2.5 实验；上面的 Qwen3 入口仅替换基座，消融另将 Flow loss 权重置零。
+下表记录原 Qwen2.5 实验；Qwen3 的阶段和损失以 [README_qwen3.md](README_qwen3.md) 为准。
 
 | 项目 | 配置 |
 | --- | --- |
@@ -106,7 +62,7 @@ Git 保存代码、配方、模型版本、原始来源和逐文件校验清单�
 `manifests/data_release.json` 锁定每个 tar 分片；相邻 `.files.jsonl.gz` 锁定每个解包文件。
 
 精确数据复现必须取得配套数据包。当前数据经过人工审核和历史标注，重新下载公共数据并重新生成描述不能保证相同样本集合。
-冻结版本保留原始记录与顺序；本次训练不消费其中的 description 字段。
+冻结版本保留原始记录与顺序；Qwen2.5 不消费 description，Qwen3 Teacher 两阶段使用固定描述标注。
 Plain 的实测 token 长度清单包含路径指纹；`prepare-data` 先验证历史指纹，再仅重新绑定新目录，所有长度值保持不变。
 公开数据集：[Wing22/qwen25-flow-repro-data-v1](https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1)。
 20 个分片已全部上传并通过公开访问、文件大小和 SHA256 校验。

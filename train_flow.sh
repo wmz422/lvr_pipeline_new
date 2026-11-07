@@ -9,8 +9,10 @@ for REPRO_ARG in "$@"; do
       cat <<'HELP'
 Usage: bash train_flow.sh [options]
 
-Prepare pinned data/models, build the offline VAE cache, train Teacher -> Warmup
--> Joint with validation, then evaluate all 11 benchmarks. Global batch is 128.
+Prepare pinned data/models and run the selected training stages with validation,
+then evaluate all 11 benchmarks. Qwen3 Flow/no-Flow use four stages; the
+no-latent-alignment entry reuses Flow stage 2 and runs answer-only Joint.
+Global batch is 128.
 Hardware settings are manual; no configuration search or automatic batch changes.
 
   --gpus N                         Training GPUs (default: 4)
@@ -28,6 +30,7 @@ Hardware settings are manual; no configuration search or automatic batch changes
   --flow-generator-batch-size N    Frozen Flow sub-batch (default: 2)
   --eval-gpus N                    Defaults to min(--gpus, 8)
   --output PATH                    New run directory (default depends on variant)
+  --source-run PATH                No-latent-align only: Flow run containing stage 2
   --resume                         Resume this output with identical settings
   --preflight                      Opt in to a separate four-update GPU smoke check
   --skip-bootstrap                 Use data/models already prepared in this checkout

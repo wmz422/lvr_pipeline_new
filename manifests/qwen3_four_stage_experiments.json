@@ -1,0 +1,224 @@
+{
+  "schema": "qwen3-four-stage-and-answer-only-verification-v1",
+  "verified_at_utc": "2026-11-07T04:30:00.063351+00:00",
+  "base_commit": "f7c8fff20fae65fd89ef0836fb59373682e8dce8",
+  "branch": "repro/qwen25-flow-20261028",
+  "status": "passed_cpu_checks",
+  "published": false,
+  "entries": {
+    "train_qwen3_flow.sh": {
+      "variant": "qwen3",
+      "stages": [
+        "teacher_alignment",
+        "teacher_joint",
+        "warmup",
+        "joint"
+      ],
+      "flow_weight": 0.1,
+      "description_stages": [
+        "teacher_alignment",
+        "teacher_joint"
+      ],
+      "output": "runs/qwen3-flow-4stage"
+    },
+    "train_qwen3_no_flow_loss.sh": {
+      "variant": "qwen3-no-flow-loss",
+      "stages": [
+        "teacher_alignment",
+        "teacher_joint",
+        "warmup",
+        "joint"
+      ],
+      "flow_weight": 0.0,
+      "description_stages": [
+        "teacher_alignment",
+        "teacher_joint"
+      ],
+      "output": "runs/qwen3-no-flow-loss-4stage"
+    },
+    "train_qwen3_no_latent_align.sh": {
+      "variant": "qwen3-no-latent-align",
+      "stages": [
+        "joint"
+      ],
+      "source": "runs/qwen3-flow-4stage/teacher_joint/checkpoints/student_source.ckpt",
+      "objective": "answer_ce_only",
+      "predicted_probability": 1.0,
+      "teacher_forward": false,
+      "teacher_encoder_inputs": false,
+      "latent_alignment": false,
+      "description": false,
+      "flow_forward": false,
+      "output": "runs/qwen3-no-latent-align"
+    }
+  },
+  "regression": {
+    "suites": [
+      29,
+      4,
+      29,
+      3,
+      44
+    ],
+    "discovered": 109,
+    "passed": 108,
+    "skipped": 1,
+    "skip_reason": "Existing official-answer fixture unavailable",
+    "log_sha256": "32e791d90973174deea940d0ef721647c239d15f5a6054d9fce51652ed04d955"
+  },
+  "tiny_cpu_training": "Actual Qwen3/FLUX gradients, both Flow weights, four-stage training/export/reload/generation; answer-only CE gradient reaches latent/query/head with Teacher and alignment functions forbidden",
+  "hardware_previews": {
+    "gpu_counts": [
+      2,
+      4,
+      8
+    ],
+    "global_batch": 128,
+    "full_epoch_updates": 1346,
+    "warmup_updates": 200,
+    "automatic_tuning": false
+  },
+  "real_cpu_checks": {
+    "qwen3": {
+      "status": "passed",
+      "recipes_checked": 16,
+      "processor_samples": 35,
+      "data_counts": {
+        "train": 172224,
+        "val": 7571
+      },
+      "description_collator_execution": "image_free_teacher_only",
+      "loaders": [
+        {
+          "module": "FlowDataModule",
+          "train_ids": [
+            "images/original/TreeVGR-RL-37K/1568.jpg:1568",
+            "images/original/TreeVGR-RL-37K/7896.jpg:7896"
+          ],
+          "validation_ids": [
+            "images/original/TreeVGR-RL-37K/10456.jpg:10456"
+          ],
+          "passed": true,
+          "qa_original_pixels": 2000000,
+          "cpu_probe_flow_original_pixels": 3072
+        },
+        {
+          "module": "StudentDataModule",
+          "train_ids": [
+            "mentis_form-board/930202601",
+            "images/original/TreeVGR-RL-37K/1568.jpg:1568"
+          ],
+          "validation_ids": [
+            "images/original/TreeVGR-RL-37K/10456.jpg:10456"
+          ],
+          "passed": true,
+          "qa_original_pixels": 2000000,
+          "cpu_probe_flow_original_pixels": 3072
+        }
+      ],
+      "report_sha256": "d3e9e282c99e58e7a7218ba00e8f08d0a35dc45c07b7177d36648797ba2e3faf"
+    },
+    "qwen3-no-flow-loss": {
+      "status": "passed",
+      "recipes_checked": 16,
+      "processor_samples": 35,
+      "data_counts": {
+        "train": 172224,
+        "val": 7571
+      },
+      "description_collator_execution": "image_free_teacher_only",
+      "loaders": [
+        {
+          "module": "FlowDataModule",
+          "train_ids": [
+            "images/original/TreeVGR-RL-37K/1568.jpg:1568",
+            "images/original/TreeVGR-RL-37K/7896.jpg:7896"
+          ],
+          "validation_ids": [
+            "images/original/TreeVGR-RL-37K/10456.jpg:10456"
+          ],
+          "passed": true,
+          "qa_original_pixels": 2000000,
+          "cpu_probe_flow_original_pixels": 3072
+        },
+        {
+          "module": "StudentDataModule",
+          "train_ids": [
+            "mentis_form-board/930202601",
+            "images/original/TreeVGR-RL-37K/1568.jpg:1568"
+          ],
+          "validation_ids": [
+            "images/original/TreeVGR-RL-37K/10456.jpg:10456"
+          ],
+          "passed": true,
+          "qa_original_pixels": 2000000,
+          "cpu_probe_flow_original_pixels": 3072
+        }
+      ],
+      "report_sha256": "404650e8bd172c68f550420e2127a74c485d18e4336d33a9d26fb01cb4f5b8cc"
+    },
+    "qwen3-no-latent-align": {
+      "status": "passed",
+      "recipes_checked": 4,
+      "processor_samples": 35,
+      "data_counts": {
+        "train": 172224,
+        "val": 7571
+      },
+      "description_collator_execution": "absent",
+      "loaders": [
+        {
+          "module": "StudentDataModule",
+          "train_ids": [
+            "mentis_form-board/930202601",
+            "images/original/TreeVGR-RL-37K/1568.jpg:1568"
+          ],
+          "validation_ids": [
+            "images/original/TreeVGR-RL-37K/10456.jpg:10456"
+          ],
+          "passed": true,
+          "qa_original_pixels": 2000000,
+          "cpu_probe_flow_original_pixels": 3072
+        }
+      ],
+      "report_sha256": "a73725a1b752dcc4634c09b5d2eadb1cabd5962cfbf13d5b1d0f8a4a3835f17e"
+    }
+  },
+  "description_labels": {
+    "schema": "qwen3-frozen-descriptions-v1",
+    "path": "assets/qwen3_descriptions/captions.jsonl.gz",
+    "bytes": 17499834,
+    "sha256": "5664dfa07e97188d3fd502ceda38a49161e9c62f2427addf37733fc840b7bd10",
+    "records": 123947,
+    "legacy_split_records": {
+      "train": 122706,
+      "val": 1241
+    },
+    "training_data_manifest_sha256": "4c2d5cc5e7a655ecdae1a6cbf9187100f78b0bf330c76fec0a1fe89cd458e937",
+    "source_caption_sha256": "92d4e1d962d11372f3472e9b62544b87d94ef0a20188ae413f55256f21f4e6c4",
+    "selection": "Exact legacy IDs in the frozen VStar-decontaminated train/validation split; original caption rows unchanged. Reasoning state descriptions remain in the existing reasoning records."
+  },
+  "unchanged_reference_sha256": {
+    "manifests/training_data.json": "4c2d5cc5e7a655ecdae1a6cbf9187100f78b0bf330c76fec0a1fe89cd458e937",
+    "manifests/data_release.json": "3f010350069c1466c6409d34ad34552f2fddd22ab7e31f3749c177a1357318fa",
+    "manifests/qwen3_model.json": "aad5ba32ee4735ffadbbe2a7766986181ae6481b498dc14dac140cd26c7382e3",
+    "manifests/flow_model.json": "946054c3b85b108472c1881325681023fa73de11034a1c1b5f48bb6ca27fa6bb",
+    "configs/plain_reference.yaml": "6122a9b5f27419fc131b3078c70d571e3e869375f0ae6c849670cb365d1edcd1",
+    "paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu/configs/experiment.yaml": "25989e1956d015a28ae73eeb6a792fd448c6cf1fe51563a810ea39db5bbd41b7"
+  },
+  "automatic_final_evaluation": {
+    "enabled_by_default_for_all_three": true,
+    "benchmarks": 11,
+    "records": 9957,
+    "generations": 10107,
+    "mode": "predicted",
+    "checkpoint": "Each run joint/checkpoints/last_full.ckpt"
+  },
+  "not_run": [
+    "Full-size 4B GPU training for the three experiments",
+    "Full benchmark model inference and new accuracy results",
+    "Fresh environment installation"
+  ],
+  "gpu_jobs_started": 0,
+  "visible_gpus": 0
+}

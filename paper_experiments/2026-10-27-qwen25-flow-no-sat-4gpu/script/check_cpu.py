@@ -27,6 +27,7 @@ from lvr.models.latent_prediction import LatentPrediction, prediction_prompt
 from lvr.predict_latents import PredictionCLI
 from reconstruction_experiment.prepare import samples, write_json, protocol, prepare
 from reconstruction_experiment.teacher import NoDescriptionFlowTeacher
+from reconstruction_experiment.description_teacher import DescriptionFlowTeacher
 
 
 def check_recipes(args, plain, counts, settings):
@@ -36,12 +37,13 @@ def check_recipes(args, plain, counts, settings):
         variant.teacher_sees_question = sees_question
         for preflight in (False, True):
             configs, steps = launch.build_recipes(variant, plain, counts, settings, preflight=preflight)
-            assert list(configs) == ["teacher_joint", "warmup", "joint"]
+            assert list(configs) == list(launch.phases(args))
             if not preflight:
-                assert steps == {"teacher_joint": 1346, "warmup": 200, "joint": 1346}
+                assert steps == {phase: 200 if phase == "warmup" else 1346 for phase in launch.phases(args)}
             for phase, config in configs.items():
-                teacher = phase == "teacher_joint"
-                cls, data_cls, cli_cls = ((NoDescriptionFlowTeacher, FlowDataModule, FlowStageCLI) if teacher
+                teacher = launch.teacher_phase(phase)
+                teacher_cls = DescriptionFlowTeacher if config["model"]["description_weight"] else NoDescriptionFlowTeacher
+                cls, data_cls, cli_cls = ((teacher_cls, FlowDataModule, FlowStageCLI) if teacher
                                          else (LatentPrediction, StudentDataModule, PredictionCLI))
                 parser = LightningArgumentParser(exit_on_error=False)
                 parser.add_lightning_class_args(Trainer, "trainer")
@@ -51,9 +53,12 @@ def check_recipes(args, plain, counts, settings):
                 parser.add_argument("--ckpt_path", type=str, default=None)
                 parser.add_argument("--seed_everything", default=42)
                 parsed = parser.parse_object(config)
-                assert parsed.model.description_weight == 0 and not parsed.data.include_descriptions
-                assert parsed.data.caption_path is None and not parsed.data.qa_crops
-                assert parsed.data.encoder_uses_question == sees_question
+                described = bool(config["model"]["description_weight"])
+                assert parsed.data.include_descriptions == described
+                assert bool(parsed.data.caption_path) == described and not parsed.data.qa_crops
+                assert parsed.data.description_image_mode == "none"
+                assert parsed.data.include_encoder == (teacher or parsed.model.latent_weight > 0)
+                assert parsed.data.encoder_uses_question == (sees_question and parsed.data.include_encoder)
                 assert parsed.data.original_pixels == plain["data"]["original_pixels"]
                 assert parsed.trainer.devices * parsed.data.batch_size * parsed.trainer.accumulate_grad_batches == 128
                 reference_batch = args.defaults["teacher_batch_size" if teacher else "student_batch_size"]
@@ -82,22 +87,33 @@ def check_real_loader(args, plain, output):
             write_json(path, read_records(data[key])[:count])
             data[key] = str(path)
     # A dedicated debug GT protocol bounds CPU VAE cost. Formal recipes remain 2MP.
-    settings = protocol(dict(data, original_pixels=3072, crop_pixels=1024), PROJECT)
-    prepare(root / "gt", settings, {"train": 8, "val": 4}, workers=2)
-    cache_plan = build_plan(root / "gt", args.defaults["flow_model"], device_type="cpu",
-                            batch_size=2, shard_bytes=2**20)
-    cache_root = root / "latents" / cache_plan["plan_sha256"]
-    bind_plan(cache_root, cache_plan)
-    run_worker(cache_root, 0, 1, "cpu")
-    finalize(cache_root)
+    needs_flow = any(map(launch.teacher_phase, launch.phases(args)))
+    if needs_flow:
+        settings = protocol(dict(data, original_pixels=3072, crop_pixels=1024), PROJECT)
+        prepare(root / "gt", settings, {"train": 8, "val": 4}, workers=2)
+        cache_plan = build_plan(root / "gt", args.defaults["flow_model"], device_type="cpu",
+                                batch_size=2, shard_bytes=2**20)
+        cache_root = root / "latents" / cache_plan["plan_sha256"]
+        bind_plan(cache_root, cache_plan)
+        run_worker(cache_root, 0, 1, "cpu")
+        finalize(cache_root)
     data.pop("train_length_manifest_path", None)
-    data.update(num_latents=8, include_encoder=True, max_length=args.defaults["max_length"],
+    data.update(num_latents=8, include_encoder=args.defaults.get("latent_weight", 1.0) > 0,
+                include_descriptions=False, caption_path=None, max_length=args.defaults["max_length"],
                 batch_size=2, num_workers=0, val_num_workers=0, pin_memory=False, persistent_workers=False)
-    flow_data = dict(data, flow_data_root=str(root / "gt"), flow_protocol_sha256=settings["protocol_sha256"],
-                     flow_latent_root=str(cache_root), flow_vae_model_path=args.defaults["flow_model"],
-                     flow_layout_buckets=True, flow_stress_first=False)
+    if not data["include_encoder"]:
+        data["predicted_latents_only"] = True
+    modules = [(StudentDataModule, data)]
+    if needs_flow:
+        described = bool(args.defaults.get("teacher_description_weight", 0))
+        flow_data = dict(data, include_encoder=True, include_descriptions=described,
+                        caption_path=args.defaults.get("description_captions") if described else None,
+                        flow_data_root=str(root / "gt"), flow_protocol_sha256=settings["protocol_sha256"],
+                        flow_latent_root=str(cache_root), flow_vae_model_path=args.defaults["flow_model"],
+                        flow_layout_buckets=True, flow_stress_first=False)
+        modules.insert(0, (FlowDataModule, flow_data))
     results = []
-    for cls, kwargs in ((FlowDataModule, flow_data), (StudentDataModule, data)):
+    for cls, kwargs in modules:
         module = cls(**kwargs)
         module.trainer = SimpleNamespace(world_size=4, global_rank=0, accumulate_grad_batches=1)
         module.setup("fit")
@@ -107,7 +123,11 @@ def check_real_loader(args, plain, output):
         batch = next(iter(train))
         expected = [module.train_dataset.items[i]["id"] for i in next(iter(train.batch_sampler))]
         assert batch["ids"] == expected and len(batch["ids"]) == 2
-        assert "description" not in batch
+        assert ("description" in batch) == kwargs["include_descriptions"]
+        assert ("encoder" in batch) == kwargs["include_encoder"]
+        if kwargs["include_descriptions"]:
+            assert "pixel_values" not in batch["description"]
+            assert not batch["description"]["mm_token_type_ids"].any()
         if cls is FlowDataModule:
             assert isinstance(train.collate_fn, LatentFlowCollator)
             assert all(x.dtype == torch.float32 and x.shape[:2] == (1, 128) for x in batch["flow"]["targets"])
@@ -130,7 +150,7 @@ def main():
                  "warmup-batch-size", "joint-batch-size", "teacher-optimizer-device",
                  "warmup-optimizer-device", "joint-optimizer-device", "cpu-threads", "zero-stage",
                  "teacher-zero-stage", "warmup-zero-stage", "joint-zero-stage", "parameter-offload",
-                 "flow-generator-batch-size")
+                 "flow-generator-batch-size", "source-run")
     for key in forwarded:
         p.add_argument("--" + key)
     a = p.parse_args()
@@ -150,13 +170,16 @@ def main():
     sets = {}
     selected = {}
     for split, prefix in (("train", "train"), ("val", "val")):
-        legacy = CropQADataset(data[prefix + "_path"], data[prefix + "_boxes_path"], caption_path=None).items
+        legacy = CropQADataset(data[prefix + "_path"], data[prefix + "_boxes_path"],
+            caption_path=args.defaults.get("description_captions") if args.defaults.get("teacher_description_weight", 0) else None).items
         reasoning = CropQADataset(data["additional_" + prefix + "_path"]).items
         all_items = legacy + reasoning
         ids = {r["id"] for r in all_items}
         assert len(ids) == len(all_items) == counts[split]
         gt_ids = {r["id"] for r in samples(settings, split)}
         assert ids == gt_ids
+        if args.defaults.get("teacher_description_weight", 0):
+            assert all(item.get("description", "").strip() for item in all_items)
         sets[split] = ids
         # Exercise each source and long/multi-image cases; this is not an exhaustive token audit.
         choices = [legacy[0], max(legacy, key=lambda r: len(r["boxes"])),
@@ -173,30 +196,40 @@ def main():
     processor = AutoProcessor.from_pretrained(data["processor_name_or_path"], local_files_only=True)
     processor.tokenizer.padding_side = "right"
     cap_qwen_pixels(processor, data["original_pixels"])
-    def collator(question=False):
+    needs_encoder = args.defaults.get("latent_weight", 1.0) > 0
+    def collator(question=False, descriptions=False):
         return CropQACollator(processor, data["image_root"], num_latents=8,
             original_pixels=data["original_pixels"], crop_pixels=data["crop_pixels"],
-            max_length=args.defaults["max_length"], include_encoder=True, qa_crops=False,
-            encoder_uses_question=question, include_descriptions=False)
+            max_length=args.defaults["max_length"], include_encoder=needs_encoder, qa_crops=False,
+            encoder_uses_question=question, include_descriptions=descriptions,
+            description_image_mode="none")
     records = []
     for item in selected.values():
-        item = dict(item, description="")
         batch = collator()([item])
-        assert "description" not in batch and "labels" not in batch["encoder"]
-        assert batch["qa"]["slot_mask"].sum() == batch["encoder"]["slot_mask"].sum() == 8
+        assert "description" not in batch
+        assert batch["qa"]["slot_mask"].sum() == 8
+        if needs_encoder:
+            assert "labels" not in batch["encoder"] and batch["encoder"]["slot_mask"].sum() == 8
+        else:
+            assert "encoder" not in batch
+        if args.defaults.get("teacher_description_weight", 0):
+            described = collator(descriptions=True)([item])["description"]
+            assert "pixel_values" not in described and "image_grid_thw" not in described
+            assert not described["mm_token_type_ids"].any() and (described["labels"] != -100).any()
         original_count = len(item.get("images") or [item["question_image"]])
         assert len(batch["qa"]["image_grid_thw"]) == original_count
         records.append({"id": item["id"], "qa_tokens": batch["qa"]["input_ids"].shape[1],
-                        "encoder_tokens": batch["encoder"]["input_ids"].shape[1],
+                        "encoder_tokens": batch["encoder"]["input_ids"].shape[1] if needs_encoder else 0,
                         "original_images": original_count,
-                        "encoder_images": len(batch["encoder"]["image_grid_thw"])})
+                        "encoder_images": len(batch["encoder"]["image_grid_thw"]) if needs_encoder else 0})
         print("PROCESSOR_PASS", item["id"], records[-1]["qa_tokens"], records[-1]["encoder_tokens"], flush=True)
     probe = dict(next(iter(selected.values())), question="QUESTION_MARKER_B8", answer="ANSWER_MARKER_F6", description="")
     for sees_question in (False, True):
         batch = collator(sees_question)([probe])
-        encoded = processor.tokenizer.decode(batch["encoder"]["input_ids"][0])
-        assert ("QUESTION_MARKER_B8" in encoded) == sees_question
-        assert "ANSWER_MARKER_F6" not in encoded
+        if needs_encoder:
+            encoded = processor.tokenizer.decode(batch["encoder"]["input_ids"][0])
+            assert ("QUESTION_MARKER_B8" in encoded) == sees_question
+            assert "ANSWER_MARKER_F6" not in encoded
         prompt = prediction_prompt(batch["qa"], processor.tokenizer.pad_token_id)
         decoded = processor.tokenizer.decode(prompt["input_ids"][0])
         assert "QUESTION_MARKER_B8" in decoded and "ANSWER_MARKER_F6" not in decoded
@@ -219,7 +252,8 @@ def main():
     loaders = check_real_loader(args, plain, a.output)
     write_json(a.output / "validation.json", {"status": "passed", "gpu_started": False,
         "full_model_instantiated": False, "recipes_checked": recipes, "data_counts": counts,
-        "all_clean_qa_ids_equal_reconstruction_ids": True, "description_collator_execution": "absent",
+        "all_clean_qa_ids_equal_reconstruction_ids": True,
+        "description_collator_execution": "image_free_teacher_only" if args.defaults.get("teacher_description_weight", 0) else "absent",
         "teacher_question_toggle_and_answer_exclusion": "passed", "processor_samples": records,
         "reconstruction_examples": target_examples,
         "real_datamodule_checks": loaders,

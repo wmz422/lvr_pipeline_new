@@ -375,13 +375,18 @@ class CropQADataModule(pl.LightningDataModule):
                  caption_path=None, additional_train_path=None, additional_val_path=None,
                  val_num_workers=None, prefetch_factor=2, pin_memory=True,
                  persistent_workers=True, include_reconstruction=False,
-                 train_length_manifest_path=None, train_sample_ids_path=None):
+                 train_length_manifest_path=None, train_sample_ids_path=None,
+                 predicted_latents_only=False):
         super().__init__()
         if num_workers < 0 or (val_num_workers is not None and val_num_workers < 0):
             raise ValueError("DataLoader worker counts must be nonnegative")
         if prefetch_factor < 1:
             raise ValueError("prefetch_factor must be positive")
-        if include_encoder != (num_latents > 0) or (qa_crops and include_encoder):
+        if predicted_latents_only:
+            if (num_latents <= 0 or include_encoder or qa_crops
+                    or include_descriptions or include_reconstruction):
+                raise ValueError("Predicted-only data requires latent slots and original-only QA without auxiliary branches")
+        elif include_encoder != (num_latents > 0) or (qa_crops and include_encoder):
             raise ValueError("Use positive latent slots with A, or zero slots for plain/RGB QA")
         if encoder_uses_question and not include_encoder:
             raise ValueError("Question-conditioned encoding requires A")

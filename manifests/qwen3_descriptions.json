@@ -1,0 +1,14 @@
+{
+  "schema": "qwen3-frozen-descriptions-v1",
+  "path": "assets/qwen3_descriptions/captions.jsonl.gz",
+  "bytes": 17499834,
+  "sha256": "5664dfa07e97188d3fd502ceda38a49161e9c62f2427addf37733fc840b7bd10",
+  "records": 123947,
+  "legacy_split_records": {
+    "train": 122706,
+    "val": 1241
+  },
+  "training_data_manifest_sha256": "4c2d5cc5e7a655ecdae1a6cbf9187100f78b0bf330c76fec0a1fe89cd458e937",
+  "source_caption_sha256": "92d4e1d962d11372f3472e9b62544b87d94ef0a20188ae413f55256f21f4e6c4",
+  "selection": "Exact legacy IDs in the frozen VStar-decontaminated train/validation split; original caption rows unchanged. Reasoning state descriptions remain in the existing reasoning records."
+}

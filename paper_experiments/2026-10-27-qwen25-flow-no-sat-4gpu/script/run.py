@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Three stages, clean data, no description, image reconstruction, unified evaluation."""
+"""Bound Qwen VL training stages, clean data, reconstruction and unified evaluation."""
 import argparse
 import copy
 import fcntl
@@ -26,6 +26,21 @@ from reconstruction_experiment.prepare import protocol, prepare, record_file, va
 PHASES = ("teacher_joint", "warmup", "joint")
 
 
+def phases(args):
+    return tuple(args.defaults.get("phases", PHASES))
+
+
+def teacher_phase(phase):
+    return phase in ("teacher_alignment", "teacher_joint")
+
+
+def student_source(args, *, preflight=False):
+    if args.source_run is not None:
+        return args.source_run / "teacher_joint/checkpoints/student_source.ckpt"
+    output = args.output / "preflight" if preflight else args.output
+    return output / "teacher_joint/checkpoints/student_source.ckpt"
+
+
 def import_script(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
@@ -36,9 +51,14 @@ def import_script(name, path):
 def parse_args(argv=None):
     config_path = Path(os.environ.get("LVR_FLOW_CONFIG", EXPERIMENT / "configs/experiment.yaml"))
     defaults = yaml.safe_load(config_path.read_text().replace("${REPO}", str(WORKSPACE)))
+    if (os.environ.get("LVR_FLOW_VARIANT", "qwen25") != "qwen25"
+            and config_path.resolve() == (EXPERIMENT / "configs/experiment.yaml").resolve()):
+        defaults = import_script("portable_flow_profile", WORKSPACE / "tools/common.py").flow_defaults()
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("output", "flow_data", "flow_latents"):
         parser.add_argument("--" + name.replace("_", "-"), type=Path, default=Path(defaults[name]))
+    parser.add_argument("--source-run", type=Path, default=defaults.get("source_run"),
+                        help="For answer-only training, reuse this four-stage Flow run's stage-2 export")
     for name in ("gpus", "teacher_batch_size", "student_batch_size"):
         parser.add_argument("--" + name.replace("_", "-"), type=int, default=defaults[name])
     parser.add_argument("--eval-gpus", type=int, help="Evaluation workers; default: min(training GPUs, 8)")
@@ -84,12 +104,14 @@ def parse_args(argv=None):
     for name in ("teacher", "warmup", "joint"):
         if getattr(args, name + "_zero_stage") is None:
             setattr(args, name + "_zero_stage", args.zero_stage)
+    active_hardware = tuple(dict.fromkeys("teacher" if teacher_phase(phase) else phase
+                                         for phase in defaults.get("phases", PHASES)))
     if args.parameter_offload == "cpu" and any(getattr(args, name + "_zero_stage") != 3
-                                               for name in ("teacher", "warmup", "joint")):
+                                               for name in active_hardware):
         parser.error("CPU parameter offload requires ZeRO-3 in every phase")
-    for batch in (args.teacher_batch_size,
-                  args.warmup_batch_size or args.student_batch_size,
-                  args.joint_batch_size or args.student_batch_size):
+    for name in active_hardware:
+        batch = args.teacher_batch_size if name == "teacher" else (
+            getattr(args, name + "_batch_size") or args.student_batch_size)
         if batch < 1 or 128 % (args.gpus * batch):
             parser.error("Each per-GPU batch × GPUs must divide global batch 128")
     if (args.cpu_threads < 1 or args.flow_generator_batch_size < 1
@@ -98,6 +120,12 @@ def parse_args(argv=None):
     args.output = args.output.expanduser().resolve()
     args.flow_data = args.flow_data.expanduser().resolve()
     args.flow_latents = args.flow_latents.expanduser().resolve()
+    if args.source_run is not None:
+        args.source_run = args.source_run.expanduser().resolve()
+        if tuple(defaults.get("phases", PHASES)) != ("joint",) or defaults.get("latent_weight", 1.0) != 0:
+            parser.error("--source-run is only valid for the no-latent-alignment experiment")
+        if args.source_run == args.output:
+            parser.error("--source-run and --output must be different")
     if args.cache_workers is None:
         args.cache_workers = args.gpus if args.cache_device == "cuda" else 1
     if min(args.cache_workers, args.cache_vae_batch_size, args.cache_shard_mib) < 1:
@@ -109,6 +137,10 @@ def parse_args(argv=None):
 def load_inputs(args):
     reference = Path(args.defaults["plain_recipe"])
     plain = yaml.safe_load(reference.read_text())
+    description_binding = None
+    if args.defaults.get("teacher_description_weight", 0):
+        portable = import_script("description_inputs", WORKSPACE / "tools/common.py")
+        description_binding = portable.verify_descriptions()
     data, trainer = plain["data"], plain["trainer"]
     if (data["original_pixels"] != 2000000
             or trainer["devices"] * data["batch_size"] * trainer["accumulate_grad_batches"] != 128):
@@ -162,6 +194,7 @@ def load_inputs(args):
     lock = verify_model_lock(args.defaults["flow_model"])
     settings = protocol(data, PROJECT)
     return plain, counts, settings, {"plain_recipe": str(reference), "plain_recipe_sha256": digest_file(reference),
+        "description_captions": description_binding,
         "splits": configs, "counts": counts, "flow_model_revision": lock["revision"],
         "model_source_sha256": digest_file(model / "source.json"), "model_files": model_files,
         "model_repository": source["repository"], "model_revision": source["revision"],
@@ -173,8 +206,8 @@ def load_inputs(args):
 def build_recipes(args, plain, counts, settings, *, preflight=False):
     output = args.output / "preflight" if preflight else args.output
     configs, steps = {}, {}
-    for phase in PHASES:
-        teacher = phase == "teacher_joint"
+    for phase in phases(args):
+        teacher = teacher_phase(phase)
         batch = (args.teacher_batch_size if teacher else
                  getattr(args, phase + "_batch_size") or args.student_batch_size)
         accumulation = 128 // (args.gpus * batch)
@@ -216,8 +249,13 @@ def build_recipes(args, plain, counts, settings, *, preflight=False):
                 zero["offload_param"] = {"device": "cpu", "pin_memory": True}
             strategy["config"] = deepspeed
         data.pop("train_length_manifest_path", None)
-        data.update(batch_size=batch, num_latents=8, include_encoder=True, include_descriptions=False,
-                    caption_path=None, encoder_uses_question=args.teacher_sees_question,
+        description_weight = args.defaults.get("teacher_description_weight", 0.0) if teacher else (
+            args.defaults.get("joint_description_weight", 0.0) if phase == "joint" else 0.0)
+        answer_only = not teacher and args.defaults.get("latent_weight", 1.0) == 0
+        data.update(batch_size=batch, num_latents=8, include_encoder=not answer_only,
+                    include_descriptions=bool(description_weight),
+                    caption_path=args.defaults.get("description_captions") if description_weight else None,
+                    description_image_mode="none", encoder_uses_question=args.teacher_sees_question and not answer_only,
                     max_length=args.defaults["max_length"], include_reconstruction=False)
         data.update({key: args.defaults[key] for key in (
             "num_workers", "val_num_workers", "prefetch_factor", "pin_memory", "persistent_workers")})
@@ -243,7 +281,8 @@ def build_recipes(args, plain, counts, settings, *, preflight=False):
                 "steps_per_epoch": per_epoch}},
             {"class_path": "reconstruction_experiment.runtime.RunAudit"},
             {"class_path": "lvr.training.audit.HostMemoryAudit"},
-            {"class_path": "reconstruction_experiment.audit.NoDescriptionAudit"},
+            {"class_path": "reconstruction_experiment.audit." + (
+                "DescriptionAudit" if description_weight else "NoDescriptionAudit")},
         ]
         for logger in trainer["logger"]:
             logger["init_args"]["save_dir"] = str(output / phase)
@@ -254,7 +293,8 @@ def build_recipes(args, plain, counts, settings, *, preflight=False):
             "FlowDeepSpeedPrecision" if teacher else "MatchedDeepSpeedPrecision"),
             "init_args": {"precision": "bf16-mixed", "reference_accumulation": reference_accumulation}}]
         if teacher:
-            config["model"].update(num_latents=8, description_weight=0.0, qa_loss_weight=1.0,
+            config["model"].update(num_latents=8, description_weight=description_weight,
+                qa_loss_weight=0.0 if phase == "teacher_alignment" else 1.0,
                 encoder_type="qwen", encoder_uses_question=args.teacher_sees_question,
                 lr_schedule_steps=updates, reconstruction_weight=0.0,
                 flow_model_path=args.defaults["flow_model"], flow_weight=args.defaults["flow_weight"],
@@ -265,20 +305,25 @@ def build_recipes(args, plain, counts, settings, *, preflight=False):
             data.update(flow_data_root=str(args.flow_data), flow_protocol_sha256=settings["protocol_sha256"],
                         flow_latent_root=str(args.flow_latents), flow_vae_model_path=args.defaults["flow_model"],
                         flow_layout_buckets=True, flow_stress_first=preflight)
+            if phase == "teacher_joint" and "teacher_alignment" in phases(args):
+                config["init_checkpoint"] = str(output / "teacher_alignment/checkpoints/last_full.ckpt")
         else:
             config["model"] = {
-                "source_checkpoint": str(output / "teacher_joint/checkpoints/student_source.ckpt"),
+                "source_checkpoint": str(student_source(args, preflight=preflight)),
                 "base_model_path": data["processor_name_or_path"], "prediction_phase": phase,
                 "learning_rate": plain["model"]["learning_rate"],
                 "head_learning_rate": plain["model"]["head_learning_rate"],
                 "weight_decay": plain["model"]["weight_decay"], "lr_warmup_ratio": 0.03,
-                "lr_schedule_steps": updates, "latent_weight": 1.0, "cosine_weight": 1.0,
-                "qa_loss_weight": 1.0, "description_weight": 0.0,
+                "lr_schedule_steps": updates, "latent_weight": args.defaults.get("latent_weight", 1.0), "cosine_weight": 1.0,
+                "qa_loss_weight": 1.0, "description_weight": description_weight,
                 "energy_floor": 1e-6, "gradient_checkpointing": True, "seed": 42, "num_loops": 1,
                 "allow_question_conditioned_teacher": args.teacher_sees_question,
             }
-            if phase == "joint":
+            if phase == "joint" and "warmup" in phases(args):
                 config["init_checkpoint"] = str(output / "warmup/checkpoints/last_full.ckpt")
+            if answer_only:
+                data["predicted_latents_only"] = True
+                trainer["callbacks"][-1] = {"class_path": "reconstruction_experiment.audit.AnswerOnlyAudit"}
         configs[phase] = config
     return configs, steps
 
@@ -286,7 +331,10 @@ def build_recipes(args, plain, counts, settings, *, preflight=False):
 def training_command(args, phase, recipe):
     return [sys.executable, "-m", "torch.distributed.run", "--standalone", "--nnodes=1",
             f"--nproc_per_node={args.gpus}", "--module",
-            "reconstruction_experiment.stage1" if phase == "teacher_joint" else "reconstruction_experiment.student",
+            ("reconstruction_experiment.description_teacher" if phase == "teacher_alignment" or
+             (teacher_phase(phase) and args.defaults.get("teacher_description_weight", 0.0))
+             else "reconstruction_experiment.stage1") if teacher_phase(phase)
+            else "reconstruction_experiment.student",
             "fit", "--config", str(recipe)]
 
 
@@ -294,7 +342,7 @@ def evaluation_command(args, plain, steps, *, dry_run=False):
     command = [sys.executable, str(PROJECT / "scripts/paper_benchmarks/evaluate.py"),
                "--suite", args.defaults["suite"], "--model", plain["data"]["processor_name_or_path"],
                "--mode", "predicted", "--checkpoint", str(args.output / "joint/checkpoints/last_full.ckpt"),
-               "--source-checkpoint", str(args.output / "teacher_joint/checkpoints/student_source.ckpt"),
+               "--source-checkpoint", str(student_source(args)),
                "--expected-step", str(steps["joint"]), "--gpus", str(args.eval_gpus),
                "--output", str(args.output / "evaluation/predicted")]
     return command + (["--dry-run"] if dry_run else [])
@@ -351,18 +399,20 @@ def make_plan(args, configs, steps, inputs, settings):
              FLOW / "scripts/export_teacher.py", *sorted((PROJECT / "src/lvr").rglob("*.py")),
              PROJECT / "scripts/reasoning_data/train_and_evaluate.py", PROJECT / "scripts/latent_prediction/run.py",
              PROJECT / "scripts/paper_benchmarks/evaluate.py"]
-    files += [WORKSPACE / "reproduce.py", *sorted(WORKSPACE.glob("train*flow*.sh")),
+    files += [WORKSPACE / "reproduce.py", *sorted(WORKSPACE.glob("train*.sh")),
               *sorted((WORKSPACE / "tools").glob("*.py")),
               WORKSPACE / "manifests/qwen_model.json", WORKSPACE / "manifests/qwen3_model.json"]
-    return {"schema": "qwen-vl-no-sat-flow-v3", "phases": list(PHASES),
-            "flow_loss_weight": configs["teacher_joint"]["model"]["flow_weight"],
+    return {"schema": "qwen-vl-no-sat-flow-v4", "phases": list(phases(args)),
+            "flow_loss_weight": args.defaults["flow_weight"],
             "execution": execution_settings(args),
             "hardware": hardware_summary(args, configs),
             "inputs": inputs, "recipes": configs, "optimizer_steps": steps,
             "reconstruction_protocol": settings,
-            "latent_cache": {"root": str(args.flow_latents), "dtype": "float32", "online_vae": False,
-                             "preparation_command": cache_command(args)},
-            "description_execution": "disabled in data, train, validation and all three phases",
+            "latent_cache": ({"root": str(args.flow_latents), "dtype": "float32", "online_vae": False,
+                              "preparation_command": cache_command(args)}
+                             if any(map(teacher_phase, phases(args))) else None),
+            "description_execution": {phase: config["model"]["description_weight"]
+                                      for phase, config in configs.items()},
             "evaluation_mode": "predicted", "evaluation_gpus": args.eval_gpus,
             "answer_template_sha256": digest_file(Path(args.defaults["suite"]).parent / "configs/answer_parsing.json"),
             "suite_manifest_sha256": digest_file(Path(args.defaults["suite"]) / "manifest.json"),
@@ -407,7 +457,7 @@ def run_logged(command, path, environment):
 def execute_stages(args, configs, steps, environment, workflow):
     export = import_script("qwen25_export_teacher", FLOW / "scripts/export_teacher.py").export_teacher
     workflow.training_command = training_command
-    for phase in PHASES:
+    for phase in phases(args):
         workflow.run_stage(args, phase, configs[phase], steps[phase], environment)
         if phase == "teacher_joint":
             export(args.output / "teacher_joint/checkpoints/last_full.ckpt",
@@ -415,17 +465,58 @@ def execute_stages(args, configs, steps, environment, workflow):
     write_json(args.output / "training_complete.json", {"status": "complete", "optimizer_steps": steps})
 
 
+def bind_source_run(args, plain, counts, inputs):
+    """Require the completed Flow stage 2, never an old three-stage or zero-Flow run."""
+    if args.source_run is None:
+        return None
+    source = student_source(args)
+    if not source.is_file():
+        raise FileNotFoundError(f"Run Flow through stage 2 first; missing export: {source}")
+    plan_path = args.source_run / "workflow_plan.json"
+    source_plan = json.loads(plan_path.read_text())
+    if source_plan["phases"] != ["teacher_alignment", "teacher_joint", "warmup", "joint"]:
+        raise ValueError("Source must be the four-stage Flow experiment")
+    config = source_plan["recipes"]["teacher_joint"]
+    model = config["model"]
+    if (model["flow_weight"] != 0.1 or model["description_weight"] != 1.0
+            or model["qa_loss_weight"] != 1.0):
+        raise ValueError("Source stage 2 must use Flow 0.1, Description 1.0 and QA 1.0")
+    if source_plan["inputs"]["counts"] != counts:
+        raise ValueError("Source training/validation counts differ")
+    for key in ("splits", "model_repository", "model_revision"):
+        if source_plan["inputs"][key] != inputs[key]:
+            raise ValueError(f"Source input identity differs: {key}")
+    for key in ("train_path", "val_path", "train_boxes_path", "val_boxes_path",
+                "additional_train_path", "additional_val_path", "processor_name_or_path"):
+        if config["data"][key] != plain["data"][key]:
+            raise ValueError(f"Source input differs: {key}")
+    done = json.loads((args.source_run / "teacher_joint/complete.json").read_text())
+    workflow = import_script("source_stage_workflow", PROJECT / "scripts/reasoning_data/train_and_evaluate.py")
+    if (done.get("status") != "complete"
+            or done["optimizer_steps"] != source_plan["optimizer_steps"]["teacher_joint"]
+            or done["recipe_sha256"] != workflow.digest(config)):
+        raise ValueError("Source stage 2 is not complete for its saved recipe")
+    stat = source.stat()
+    return {"source_run": str(args.source_run), "checkpoint": str(source),
+            "checkpoint_bytes": stat.st_size, "checkpoint_mtime_ns": stat.st_mtime_ns,
+            "source_workflow_plan_sha256": digest_file(plan_path),
+            "source_stage_2": done}
+
+
 def main(argv=None):
     args = parse_args(argv)
     plain, counts, settings, inputs = load_inputs(args)
     configs, steps = build_recipes(args, plain, counts, settings)
     plan = make_plan(args, configs, steps, inputs, settings)
+    if args.source_run is not None and not args.dry_run:
+        plan["reused_flow_stage_2"] = bind_source_run(args, plain, counts, inputs)
+    needs_flow = any(map(teacher_phase, phases(args)))
     environment = execution_environment(args)
     if args.dry_run:
         print(json.dumps({"status": "dry_run", "gpu_started": False, "counts": counts,
                           "hardware": hardware_summary(args, configs),
                           "optimizer_steps": steps, "recipes": configs,
-                          "latent_preparation": cache_command(args),
+                          "latent_preparation": cache_command(args) if needs_flow else None,
                           "evaluation": evaluation_command(args, plain, steps)}, indent=2))
         return
     Path(environment["PYTORCH_KERNEL_CACHE_PATH"]).mkdir(parents=True, exist_ok=True)
@@ -435,9 +526,13 @@ def main(argv=None):
         save_plan(args.output, plan)
         print(f"OUTPUT {args.output}\nSTEPS {steps}\nTEACHER_SEES_QUESTION {args.teacher_sees_question}", flush=True)
         if args.prepare_data_only:
+            if not needs_flow:
+                raise ValueError("Answer-only training has no reconstruction data to prepare")
             prepare(args.flow_data, settings, counts, args.defaults["prepare_workers"])
             return
         if args.prepare_latents_only:
+            if not needs_flow:
+                raise ValueError("Answer-only training has no reconstruction cache to prepare")
             prepare(args.flow_data, settings, counts, args.defaults["prepare_workers"])
             run_logged(cache_command(args), args.output / "prepare_latents.log", environment)
             return
@@ -459,13 +554,15 @@ def main(argv=None):
                         "--joint-zero-stage", str(args.joint_zero_stage),
                         "--parameter-offload", args.parameter_offload,
                         "--flow-generator-batch-size", str(args.flow_generator_batch_size),
+                        *(["--source-run", str(args.source_run)] if args.source_run is not None else []),
                         *(["--warmup-batch-size", str(args.warmup_batch_size)] if args.warmup_batch_size else []),
                         *(["--joint-batch-size", str(args.joint_batch_size)] if args.joint_batch_size else [])],
                        args.output / "cpu_checks.log", environment)
         if args.prepare_only:
             write_json(args.output / "preparation.json", {"status": "cpu_prepared", "gpu_started": False,
-                "reconstruction_images_ready": validate_ready(args.flow_data, settings, counts),
-                "optimizer_steps": steps, "gpu_preflight": "pending; runs before full training"})
+                "reconstruction_images_ready": validate_ready(args.flow_data, settings, counts) if needs_flow else None,
+                "optimizer_steps": steps,
+                "gpu_preflight": "disabled" if args.skip_preflight else "pending; runs before full training"})
             return
         import torch
         evaluate = not (args.train_only or args.preflight_only)
@@ -475,10 +572,11 @@ def main(argv=None):
         workflow = import_script("qwen25_stage_workflow", PROJECT / "scripts/reasoning_data/train_and_evaluate.py")
         if not args.eval_only:
             if not args.resume and any((base / phase / "training_started.json").exists()
-                                       for base in (args.output, args.output / "preflight") for phase in PHASES):
+                                       for base in (args.output, args.output / "preflight") for phase in phases(args)):
                 raise ValueError("This run has training state; use --resume or a new --output")
-            prepare(args.flow_data, settings, counts, args.defaults["prepare_workers"])
-            run_logged(cache_command(args), args.output / "prepare_latents.log", environment)
+            if needs_flow:
+                prepare(args.flow_data, settings, counts, args.defaults["prepare_workers"])
+                run_logged(cache_command(args), args.output / "prepare_latents.log", environment)
             pre_configs, pre_steps = build_recipes(args, plain, counts, settings, preflight=True)
             pre_args = copy.copy(args)
             pre_args.output = args.output / "preflight"
@@ -489,7 +587,7 @@ def main(argv=None):
                 return
             execute_stages(args, configs, steps, environment, workflow)
         if not args.train_only:
-            for phase in PHASES:
+            for phase in phases(args):
                 done = json.loads((args.output / phase / "complete.json").read_text())
                 if done["optimizer_steps"] != steps[phase] or done["recipe_sha256"] != workflow.digest(configs[phase]):
                     raise ValueError("Evaluation requires all completed stages from this recipe")

@@ -1,4 +1,8 @@
-# Qwen3-VL Flow 与去 Flow loss 消融
+# 历史记录：2026-11-02 Qwen3 三阶段验证
+
+本页记录旧版三阶段、无 Description 配方的验证，不代表当前训练入口。
+当前四阶段 Flow、去 Flow loss、去 latent 对齐三个脚本的用法见
+[README_qwen3.md](../README_qwen3.md)。
 
 `train_qwen3_flow.sh` 和 `train_qwen3_no_flow_loss.sh` 复用原三阶段启动器、数据准备、
 缓存、checkpoint 导出和统一评测。基座锁在 `manifests/qwen3_model.json`；旧 Qwen2.5

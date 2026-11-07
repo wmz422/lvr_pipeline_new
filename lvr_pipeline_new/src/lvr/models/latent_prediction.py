@@ -81,10 +81,14 @@ class LatentPrediction(pl.LightningModule):
         if prediction_phase not in ("warmup", "joint"):
             raise ValueError("prediction_phase must be warmup or joint")
         if any(not math.isfinite(x) or x <= 0 for x in
-               (latent_weight, cosine_weight, energy_floor, qa_loss_weight)):
+               (cosine_weight, energy_floor, qa_loss_weight)):
             raise ValueError("Loss weights and energy floor must be finite and positive")
+        if not math.isfinite(latent_weight) or latent_weight < 0:
+            raise ValueError("Latent weight must be finite and nonnegative")
         if not math.isfinite(description_weight) or description_weight < 0:
             raise ValueError("Description weight must be finite and nonnegative")
+        if latent_weight == 0 and (prediction_phase != "joint" or description_weight != 0):
+            raise ValueError("Zero latent weight requires answer-only joint training without descriptions")
         self.save_hyperparameters()
         self.network = VisualBottleneck.from_checkpoint(source_checkpoint, "cpu", base_model_path=base_model_path)
         source = self.network.hparams
@@ -218,6 +222,14 @@ class LatentPrediction(pl.LightningModule):
         return states if return_all else states[-1]
 
     def forward(self, batch, *, step=0, validation=False):
+        if self.hparams.latent_weight == 0:
+            # No Teacher forward, latent targets, mixing, or auxiliary losses.
+            # Keep predicted connected: answer CE trains its queries/head and LM.
+            predicted = self.predict_latents(batch["qa"])
+            ce = self.network.answer_loss(batch["qa"], predicted)
+            return {"loss": self.hparams.qa_loss_weight * ce, "ce": ce,
+                    "predicted": predicted, "predicted_fraction": ce.new_ones(()),
+                    "predicted_probability": ce.new_ones(())}
         with torch.no_grad():
             teacher, _ = self.network.encode(batch["encoder"])
         states = self.predict_latents(batch["qa"], return_all=True)

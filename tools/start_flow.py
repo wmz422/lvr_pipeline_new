@@ -8,7 +8,7 @@ import sys
 
 from common import (ROOT, PROJECT, EXPERIMENT, VARIANT, QWEN, QWEN_LOCK, LOCAL_FLOW,
                     DEFAULT_OUTPUT, FLOW_WEIGHT, reference_recipe, flow_defaults,
-                    environment, python, run, write_json)
+                    environment, python, run, write_json, verify_descriptions)
 from release import load_lock, safe_target, sha256
 
 sys.path.insert(0, str(ROOT))
@@ -23,9 +23,12 @@ def launcher():
 
 
 def bootstrap_binding():
+    if VARIANT != 'qwen25':
+        verify_descriptions()
     return {'root': str(ROOT), 'variant': VARIANT,
             'locks': {name: sha256(ROOT / 'manifests' / name)
-                      for name in ('data_release.json', 'training_data.json', QWEN_LOCK.name, 'flow_model.json')}}
+                      for name in ('data_release.json', 'training_data.json', QWEN_LOCK.name, 'flow_model.json',
+                                   *(['qwen3_descriptions.json'] if VARIANT != 'qwen25' else []))}}
 
 
 def inputs_present():
@@ -94,6 +97,10 @@ def main(argv=None):
     configs, steps = launch.build_recipes(args, plain, {k: counts[k] for k in ('train', 'val')},
                                          {'protocol_sha256': '${GT_PROTOCOL_SHA}'})
     summary = {'variant': VARIANT, 'base_model': str(QWEN), 'flow_loss_weight': FLOW_WEIGHT,
+               'stages': list(configs),
+               'loss_weights': {phase: {key: config['model'].get(key, 0.0) for key in (
+                   'qa_loss_weight', 'description_weight', 'flow_weight', 'latent_weight')}
+                   for phase, config in configs.items()},
                'hardware': launch.hardware_summary(args, configs), 'optimizer_steps': steps,
                'output': str(args.output), 'validation': 'Each stage validates; full 11-benchmark predicted evaluation follows Joint',
                'gpu_preflight': not args.skip_preflight, 'bootstrap': not wrapper.skip_bootstrap,
