@@ -23,12 +23,13 @@ def launcher():
 
 
 def bootstrap_binding():
-    if VARIANT != 'qwen25':
+    descriptions = bool(flow_defaults().get('teacher_description_weight', 0.0))
+    if descriptions:
         verify_descriptions()
     return {'root': str(ROOT), 'variant': VARIANT,
             'locks': {name: sha256(ROOT / 'manifests' / name)
                       for name in ('data_release.json', 'training_data.json', QWEN_LOCK.name, 'flow_model.json',
-                                   *(['qwen3_descriptions.json'] if VARIANT != 'qwen25' else []))}}
+                                   *(['qwen3_descriptions.json'] if descriptions else []))}}
 
 
 def inputs_present():
@@ -92,6 +93,10 @@ def main(argv=None):
         raise ValueError(f'Local configuration does not match {VARIANT} Flow loss weight')
     if args.defaults.get('num_latents', 8) != NUM_LATENTS:
         raise ValueError(f'Local configuration does not match {VARIANT} latent length')
+    expected = flow_defaults()
+    for key in ('phases', 'teacher_description_weight', 'teacher_qa_weight', 'joint_description_weight'):
+        if args.defaults.get(key) != expected.get(key):
+            raise ValueError(f'Local configuration does not match {VARIANT} {key}')
     if not local.exists() and not any(a == '--output' or a.startswith('--output=') for a in forwarded):
         args.output = DEFAULT_OUTPUT
     plain = reference_recipe()

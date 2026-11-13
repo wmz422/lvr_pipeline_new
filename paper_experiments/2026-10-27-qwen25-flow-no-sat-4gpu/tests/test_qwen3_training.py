@@ -18,6 +18,8 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class Qwen3TrainingTests(unittest.TestCase):
+    backbone_class = Qwen3VLForConditionalGeneration
+
     @classmethod
     def setUpClass(cls):
         torch.set_num_threads(2)
@@ -27,15 +29,7 @@ class Qwen3TrainingTests(unittest.TestCase):
         cls.flow = cls.root / 'flow'
         (cls.flow / 'transformer').mkdir(parents=True)
         (cls.flow / 'transformer/config.json').write_text('{"joint_attention_dim":7680}')
-        config = Qwen3VLConfig(
-            text_config=dict(vocab_size=64, hidden_size=128, intermediate_size=256, num_hidden_layers=2,
-                             num_attention_heads=2, num_key_value_heads=2, head_dim=64,
-                             rope_parameters={'rope_type':'default', 'mrope_section':[8,12,12]}),
-            vision_config=dict(depth=2, hidden_size=64, intermediate_size=128, num_heads=4,
-                               out_hidden_size=128, patch_size=16, temporal_patch_size=2,
-                               spatial_merge_size=2, deepstack_visual_indexes=[0,1], num_position_embeddings=16),
-            image_token_id=1, video_token_id=5, vision_start_token_id=2, vision_end_token_id=3)
-        native = Qwen3VLForConditionalGeneration(config)
+        native = cls.backbone_class(cls.model_config())
         native.generation_config.pad_token_id = 0
         native.generation_config.eos_token_id = 4
         native.save_pretrained(cls.root)
@@ -43,6 +37,17 @@ class Qwen3TrainingTests(unittest.TestCase):
             ROOT / 'doc/flow_reconstruction_parallel_20261015/scripts/export_teacher.py')
         cls.exporter = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.exporter)
+
+    @staticmethod
+    def model_config():
+        return Qwen3VLConfig(
+            text_config=dict(vocab_size=64, hidden_size=128, intermediate_size=256, num_hidden_layers=2,
+                             num_attention_heads=2, num_key_value_heads=2, head_dim=64,
+                             rope_parameters={'rope_type':'default', 'mrope_section':[8,12,12]}),
+            vision_config=dict(depth=2, hidden_size=64, intermediate_size=128, num_heads=4,
+                               out_hidden_size=128, patch_size=16, temporal_patch_size=2,
+                               spatial_merge_size=2, deepstack_visual_indexes=[0,1], num_position_embeddings=16),
+            image_token_id=1, video_token_id=5, vision_start_token_id=2, vision_end_token_id=3)
 
     @classmethod
     def tearDownClass(cls):
@@ -54,11 +59,11 @@ class Qwen3TrainingTests(unittest.TestCase):
         self.addCleanup(context.__exit__, None, None, None)
         torch.manual_seed(42)
 
-    def teacher(self, weight, *, descriptions=False, alignment=False, num_latents=8):
+    def teacher(self, weight, *, descriptions=False, alignment=False, num_latents=8, qa_weight=None):
         cls = DescriptionFlowTeacher if descriptions else NoDescriptionFlowTeacher
         model = cls(str(self.root), str(self.root), train_qa=True, num_latents=num_latents,
             description_weight=1.0 if descriptions else 0.0,
-            qa_loss_weight=0.0 if alignment else 1.0,
+            qa_loss_weight=(0.0 if alignment else 1.0) if qa_weight is None else qa_weight,
             flow_model_path=str(self.flow), flow_protocol_sha256='same-gt', flow_weight=weight,
             lr_schedule_steps=2)
         with torch.random.fork_rng(devices=[]):
@@ -106,6 +111,10 @@ class Qwen3TrainingTests(unittest.TestCase):
         torch.save(checkpoint, path)
         return checkpoint
 
+    @staticmethod
+    def attention_weight(backbone):
+        return backbone.model.language_model.layers[0].self_attn.q_proj.weight
+
     def test_zero_weight_has_exact_qa_objective_and_zero_flow_gradient(self):
         full, ablation = self.teacher(.1), self.teacher(0)
         for key, value in full.state_dict().items():
@@ -122,8 +131,7 @@ class Qwen3TrainingTests(unittest.TestCase):
             self.assertIsNotNone(mapper)
             self.assertEqual(bool(mapper.count_nonzero()), model.hparams.flow_weight > 0)
             for parameter in (model.queries, model.mu_head[1].weight,
-                              model.encoder.model.language_model.layers[0].self_attn.q_proj.weight,
-                              model.qa.model.language_model.layers[0].self_attn.q_proj.weight):
+                              self.attention_weight(model.encoder), self.attention_weight(model.qa)):
                 self.assertTrue(torch.isfinite(parameter.grad).all())
                 self.assertGreater(parameter.grad.abs().sum().item(), 0)
             self.assertTrue(all(p.grad is None and not p.requires_grad
@@ -186,6 +194,8 @@ class Qwen3TrainingTests(unittest.TestCase):
         for weight in (-.1, float('nan'), float('inf')):
             with self.assertRaisesRegex(ValueError, 'nonnegative'):
                 self.teacher(weight)
+        with self.assertRaisesRegex(ValueError, 'Teacher objective'):
+            self.teacher(0, qa_weight=0)
         full, ablation = self.teacher(.1), self.teacher(0)
         checkpoint = self.save(full, self.root / 'resume.ckpt', teacher=True)
         full.on_load_checkpoint(checkpoint)
@@ -193,7 +203,7 @@ class Qwen3TrainingTests(unittest.TestCase):
             ablation.on_load_checkpoint(checkpoint)
 
     def test_four_stage_description_training_export_and_final_no_description(self):
-        for num_latents, weight in ((8, .1), (8, 0), (4, .1), (16, .1)):
+        for num_latents, weight in ((8, .1), (8, 0), (2, .1), (4, .1), (16, .1)):
             with self.subTest(num_latents=num_latents, flow_weight=weight):
                 directory = self.root / f'four-stage-{num_latents}-{weight}'
                 directory.mkdir()
@@ -250,6 +260,70 @@ class Qwen3TrainingTests(unittest.TestCase):
                     self.assertEqual(tuple(latent.shape), (2, num_latents, 512))
                     tokens = restored.network.generate_answers(prompt, latent, max_new_tokens=2, pad_token_id=0)
                 self.assertEqual(tokens.shape[0], 2)
+
+    def test_reconstruction_only_teacher_stages_skip_text_and_handoff_to_students(self):
+        directory = self.root / 'reconstruction-only'
+        directory.mkdir()
+        inputs = self.batch()
+        teacher_inputs = {key: value for key, value in inputs.items() if key != 'qa'}
+        previous = None
+        for phase in ('teacher_alignment', 'teacher_joint'):
+            teacher = self.teacher(.1, qa_weight=0)
+            if previous:
+                teacher.initialize_from_checkpoint(previous)
+            optimizer = teacher.configure_optimizers()['optimizer']
+            with patch.object(teacher, 'answer_loss', side_effect=AssertionError('Text must not execute')), \
+                    patch.object(teacher, 'log_dict') as log, torch.autocast('cpu', dtype=torch.bfloat16):
+                loss = teacher.training_step(teacher_inputs, 0)
+                metrics = log.call_args.args[0]
+                torch.testing.assert_close(loss, .1 * metrics['train/flow_mse'], rtol=0, atol=0)
+                self.assertEqual(metrics['train/ce'], 0)
+                loss.backward()
+                for parameter in (teacher.queries, teacher.mu_head[1].weight,
+                                  teacher.flow_mapper.net[-1].weight, self.attention_weight(teacher.encoder)):
+                    self.assertTrue(torch.isfinite(parameter.grad).all())
+                    self.assertGreater(parameter.grad.abs().sum().item(), 0)
+                self.assertTrue(all(p.grad is None for p in teacher.qa.parameters()))
+                self.assertTrue(all(p.grad is None for p in teacher.projector.parameters()))
+                self.assertTrue(all(p.grad is None and not p.requires_grad
+                                    for p in teacher.__dict__['_flow_runtime'].transformer.parameters()))
+                optimizer.step()
+                teacher.eval()
+                with torch.no_grad():
+                    teacher.validation_step(teacher_inputs, 0)
+                self.assertTrue(torch.isfinite(log.call_args.args[0]['val/flow_mse']))
+            previous = directory / f'{phase}.ckpt'
+            self.save(teacher, previous, teacher=True)
+        source = directory / 'source.ckpt'
+        self.exporter.export_teacher(previous, source)
+        student_inputs = {key: value for key, value in inputs.items() if key != 'flow'}
+        previous = None
+        for phase in ('warmup', 'joint'):
+            student = LatentPrediction(str(source), prediction_phase=phase, description_weight=0, lr_schedule_steps=2)
+            self.assertEqual(student.network.hparams.qa_loss_weight, 0)
+            self.assertEqual(student.network.hparams.description_weight, 0)
+            with self.assertRaisesRegex(ValueError, 'training objective'):
+                student.network.training_step({}, 0)
+            if previous:
+                student.initialize_from_checkpoint(previous)
+            optimizer = student.configure_optimizers()['optimizer']
+            with torch.autocast('cpu', dtype=torch.bfloat16):
+                values = student(student_inputs, step=500)
+            self.assertTrue(torch.isfinite(values['loss']))
+            self.assertNotIn('description_ce', values)
+            values['loss'].backward()
+            self.assertGreater(student.prediction_queries.grad.abs().sum().item(), 0)
+            if phase == 'joint':
+                self.assertGreater(self.attention_weight(student.qa).grad.abs().sum().item(), 0)
+            optimizer.step()
+            previous = directory / f'{phase}.ckpt'
+            self.save(student, previous)
+        restored = LatentPrediction.from_checkpoint(previous, 'cpu')
+        with torch.inference_mode(), torch.autocast('cpu', dtype=torch.bfloat16):
+            prompt = prediction_prompt(student_inputs['qa'], 0)
+            latent = restored.predict_latents(prompt)
+            tokens = restored.network.generate_answers(prompt, latent, max_new_tokens=2, pad_token_id=0)
+        self.assertEqual(tokens.shape[0], 2)
 
     def test_answer_only_ce_backpropagates_without_teacher_forward_or_alignment(self):
         directory = self.root / 'answer-only'

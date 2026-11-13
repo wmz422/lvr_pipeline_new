@@ -76,7 +76,7 @@ class QueueAndResumeTests(unittest.TestCase):
                      "max_input_tokens":1024, "max_new_tokens":2, "system_prompt":"test"}
         processor = SimpleNamespace(tokenizer=SimpleNamespace(decode=lambda *a, **k: "answer"),
             image_processor=SimpleNamespace(patch_size=16, to_dict=lambda: {"native":True}))
-        for length in (4, 8, 16):
+        for length in (2, 4, 8, 16):
             with self.subTest(num_latents=length):
                 output = self.root / str(length)
                 output.mkdir()

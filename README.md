@@ -1,256 +1,133 @@
-# Qwen2.5 / Qwen3-VL Flow 可复现实验
+# 三组四阶段 Flow 实验
 
-本仓库整理了 2026-10-28 正在使用的训练、离线 VAE 缓存和统一评测流程。
-默认 Flow 配方对应本次四卡实验；同时提供从同一基座开始的两轮 Plain SFT 入口。
-代码是独立副本，不会读写原实验的训练目录。
+本分支当前提供以下三组实验。每组独立训练四阶段，并在最后阶段结束后自动运行完整 benchmark 和评分。
+重构 loss 沿用现有 FLUX Flow matching MSE，系数为 **0.1**。
 
-已训练权重的 **Teacher / Teacher shuffled / Predicted / Predicted shuffled / Zero**
-消融见独立目录 [ablation/](ablation/README.md)。支持 Qwen3-VL-4B 和 Qwen2.5-VL-7B、
-独立 benchmark 数据包，以及通过 `--gpus` / `--devices` 调整并行推理卡数。
-该目录还提供历史 **Qwen3-VL-4B 四阶段 Flow** 的公开消融权重、Monet/LVR 权重与官方推理源码下载，
-以及三种方法 Teacher / Predicted 前 8 个位置的跨 case cosine 表格和曲线复现入口。
+| 实验入口 | 基座 | Latent | Teacher 两阶段目标 | 默认输出 |
+|---|---|---|---|---|
+| `train_qwen3_latent2.sh` | Qwen3-VL-4B-Instruct | **2 × 512** | 标准 Flow：第一阶段 Description + 重构；第二阶段 QA + Description + 重构 | `runs/qwen3-flow-4stage-latent-2` |
+| `train_qwen3_reconstruction_only.sh` | Qwen3-VL-4B-Instruct | 8 × 512 | **两个阶段都仅 0.1 × 重构 loss；QA、Description 均为 0** | `runs/qwen3-reconstruction-only-4stage` |
+| `train_qwen25_flow_4stage.sh` | **Qwen2.5-VL-7B-Instruct** | 8 × 512 | 与标准 Qwen3 四阶段 Flow 相同，启用两个 Teacher 阶段的 Description | `runs/qwen25-flow-4stage` |
 
-## Qwen3-VL-4B：四阶段 Flow 与三个消融
+第一个实验对照原来的 8 latent 标准 Flow，只改变 latent 数量；原有 4、16 latent 实验不在此次运行中重复训练。
+第二个实验保留全部四阶段，第三、四阶段继续采用原来的 latent 对齐和 QA 训练配方。
+第三个实验使用完整四阶段配方；相对旧 Qwen2.5 三阶段入口增加 Teacher alignment 和 Teacher Description 监督。
+详细阶段配置与对照说明见 [README_qwen3.md](README_qwen3.md)。
 
-四个脚本的完整使用说明及实验顺序见 **[README_qwen3.md](README_qwen3.md)**。
+## 启动三组实验
 
-| 入口 | 流程 | 默认输出 |
-|---|---|---|
-| `train_qwen3_flow.sh` | Alignment → Teacher joint → warmup → Student joint；Teacher 有 Description 和 FLUX 重构，最后阶段无 Description | `runs/qwen3-flow-4stage` |
-| `train_qwen3_no_flow_loss.sh` | 相同四阶段，仅将两个 Teacher 阶段的 Flow 权重置零 | `runs/qwen3-no-flow-loss-4stage` |
-| `train_qwen3_no_latent_align.sh` | 复用 Flow 第二阶段导出权重，跳过 warmup，只用答案 CE 训练最后阶段 | `runs/qwen3-no-latent-align` |
-| `train_qwen3_latent_length.sh` | 依次用 4、16 个 latent 各自独立训练标准 Flow 四阶段，每组训练后自动测试 | `runs/qwen3-flow-4stage-latent-4`、`runs/qwen3-flow-4stage-latent-16` |
+Linux，兼容的 NVIDIA 驱动，Python 3.12（训练）和 Python 3.13（几何评分）：
 
-四者使用同一份 V* 去重、训练集去 SAT 的数据和全局 batch 128。
-前三个入口使用 8 × 512 latent，长度消融使用 4 × 512、16 × 512；8 latent 基线复用第一个脚本。
-均可通过 `--gpus` 配置复现设备卡数，默认在训练后自动完成全部 11 项 benchmark 和评分。
-第三个脚本从第一个训练 step 起使用 Predicted latent，答案 CE 会反传到 latent predictor。
-Qwen3 模型固定版本与文件校验仍由 `manifests/qwen3_model.json` 锁定。
+```bash
+git clone --branch repro/qwen25-flow-20261028 --single-branch \
+  https://github.com/wmz422/lvr_pipeline_new.git qwen25-flow-repro
+cd qwen25-flow-repro
 
-## 固定的实验条件
+REPRO_GPUS=4
+bash train_qwen3_latent2.sh --gpus "$REPRO_GPUS"
+bash train_qwen3_reconstruction_only.sh --gpus "$REPRO_GPUS"
+bash train_qwen25_flow_4stage.sh --gpus "$REPRO_GPUS"
+```
 
-下表记录原 Qwen2.5 实验；Qwen3 的阶段和损失以 [README_qwen3.md](README_qwen3.md) 为准。
+每条命令包含环境准备、固定版本数据和模型下载、数据校验、RGB / 离线 FP32 VAE 缓存、
+四阶段训练与验证、最终导出、完整 11 项 benchmark 推理和评分。
+每组评测完成后再执行下一条命令；checkpoint、配置和评测结果使用独立目录，RGB / VAE 数据缓存可以共享。
+首次准备成功后记录输入绑定，同一 checkout 后续复用已准备的数据、模型和缓存。
+
+复现参考硬件为 4 × A100 80GB、64 vCPU、450 GiB RAM。固定 PyTorch 使用 CUDA 12.8。
+数据包约 38 GiB；RGB / 约 319 GiB VAE 缓存与多阶段 ZeRO checkpoint 需要额外磁盘，建议准备 TB 级空间。
+硬件参数由用户指定，不自动搜索配置或在 OOM 后降低 batch。
+
+## 训练配置
 
 | 项目 | 配置 |
-| --- | --- |
-| 基座 | Qwen/Qwen2.5-VL-7B-Instruct，revision `cc594898137f460bfe9f0759e9844b3ce807cfb5` |
-| Flow generator | FLUX.2-klein-base-4B，revision `a3b4f4849157f664bdbc776fd7453c2783562f4d` |
-| 训练 / 验证 | 172,224 / 7,571 条；只从训练集去掉 5,925 条 `sat_perspective` |
-| 训练图像 | 原图预算 2,000,000 pixels，crop/helper 262,144 pixels；没有新增低分辨率过滤 |
-| Teacher | 1 epoch = 1,346 optimizer updates；QA CE + 0.1 × Flow MSE |
-| Warmup | 200 updates；latent alignment |
-| Joint | 1 epoch = 1,346 updates；QA + latent alignment |
-| latent | 8 × 512，确定性；Teacher 不看问题，不执行 description 分支 |
-| VAE | 离线 FP32；训练时不加载 VAE，冻结 FLUX 仍对输入条件反传 |
-| 训练精度 | BF16 mixed、ZeRO-3、seed 42 |
-| 评测 | 原生 base processor，greedy，max_new_tokens=512；不额外限制测试分辨率 |
+|---|---|
+| 标准四阶段 | Teacher alignment → Teacher joint → Student warmup → Student joint |
+| 各阶段更新 | **1,346 / 1,346 / 200 / 1,346**；两个 Teacher 阶段和 Student joint 各 1 epoch |
+| 训练 / 验证 | **172,224 / 7,571** 条；VStar 去污染，训练集去除 5,925 条 `sat_perspective` |
+| 全局 batch | **128**；完整 epoch 尾批 64 条，不补齐、不丢弃 |
+| 训练图像预算 | 原图 **2,000,000 pixels**，crop/helper **262,144 pixels** |
+| Latent | 确定性、每个位置 512 维；实验 1 为 2 个，实验 2、3 为 8 个 |
+| Teacher 输入 | 不看问题；Description 解码不输入图片 |
+| 损失系数 | QA、Description、latent 对齐均为 1；重构为 0.1；实验 2 的两个 Teacher 文本损失均为 0 |
+| 学习率 | 保留标准 Flow 的 backbone / head 学习率、每阶段 warmup 和调度 |
+| 精度 / 随机种子 | BF16 mixed、ZeRO-3、seed **42** |
+| Flow / VAE | 冻结 FLUX，梯度通过条件传回 Teacher；离线 FP32 VAE，训练时不加载 VAE |
+| 序列保护 | 32,768，拒绝超限输入，不截断 |
+| 评测 | Predicted latent、原生 base processor、greedy、`max_new_tokens=512`；不额外限制测试分辨率 |
 
-| 阶段 | GPU | 每卡 microbatch | 累积 | 全局 batch | AdamW 状态 |
-| --- | ---: | ---: | ---: | ---: | --- |
-| Teacher | 4 | 8 | 4 | 128 | CPU |
-| Warmup | 4 | 8 | 4 | 128 | GPU |
-| Joint | 4 | 4 | 8 | 128 | GPU |
-| Plain | 4 | 16 | 2 | 128 | GPU |
+| 阶段 | 默认 GPU | 每卡 batch | 累积 | 全局 batch | 优化器状态 |
+|---|---:|---:|---:|---:|---|
+| Teacher alignment | 4 | 8 | 4 | 128 | CPU |
+| Teacher joint | 4 | 8 | 4 | 128 | CPU |
+| Student warmup | 4 | 8 | 4 | 128 | GPU |
+| Student joint | 4 | 4 | 8 | 128 | GPU |
 
-每个完整 epoch 最后一次更新包含 64 条，其他更新为 128 条，不补齐、不丢弃。
-保留当前 Flow 梯度缩放：Teacher 的 reference accumulation=16，student=8。
-**不要直接把 `configs/experiment.yaml` 的 reference batch 改成实际 microbatch**；启动器通过参数选择实际 batch。
-Teacher 的序列长度 32,768 是拒绝超限的保护值，不截断输入；Plain 为 8,192。
+始终按 `accumulation = 128 / (GPU 数 × 每卡 batch)` 计算，要求整除且每卡 batch 至少为 2。
+Teacher 的梯度缩放 reference accumulation 保留 16，Student 保留 8，均不随硬件参数改变。
+不要把参考配方中的 reference batch 改成实际 microbatch；通过启动参数指定实际 batch。
+Student joint 保留原来的 QA 混用：前 200 步使用 20% Predicted latent，200–499 步 50%，500 步起 100%。
+最终评测全部使用 Predicted latent。
 
-## 仓库与数据包
+## 硬件、预览和续跑
 
-Git 保存代码、配方、模型版本、原始来源和逐文件校验清单；大文件位于 `artifacts/data-v1/`，不进入 Git。
-配套数据包约 38 GiB，包含原始训练图像、冻结的审核后推理数据、筛选证据、长度清单以及完整 benchmark。
-`manifests/data_release.json` 锁定每个 tar 分片；相邻 `.files.jsonl.gz` 锁定每个解包文件。
-
-精确数据复现必须取得配套数据包。当前数据经过人工审核和历史标注，重新下载公共数据并重新生成描述不能保证相同样本集合。
-冻结版本保留原始记录与顺序；Qwen2.5 不消费 description，Qwen3 Teacher 两阶段使用固定描述标注。
-Plain 的实测 token 长度清单包含路径指纹；`prepare-data` 先验证历史指纹，再仅重新绑定新目录，所有长度值保持不变。
-公开数据集：[Wing22/qwen25-flow-repro-data-v1](https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1)。
-20 个分片已全部上传并通过公开访问、文件大小和 SHA256 校验。
-另已在新目录从公开固定版本恢复元数据分片，141 个文件全部通过校验。
-固定的数据集版本为 `7068d035c60c09dc1b343438520bdbd12107e0de`，完整发布记录见 `manifests/publication.json`。
-默认恢复命令使用该固定版本；也可以用 `--source /path/to/data-v1` 指向本地数据包。
-本机另有 `artifacts/qwen25-flow-repro.bundle` 代码仓库备份；从 GitHub 克隆时无需该文件。
-
-数据包不含模型权重、训练 checkpoint、RGB 重建缓存或约 319 GiB 的离线 VAE 缓存。
-这几项分别由固定版本下载、训练和预处理生成。缓存身份包含路径与实现哈希，换目录后应重新生成，不复用旧实验的 cache plan。
-
-## 一条命令启动 Flow 训练、验证和评测
-
-在 Linux 上准备 Python 3.12、Python 3.13 和兼容的 NVIDIA 驱动后：
+三个入口接受相同参数，例如：
 
 ```bash
-git clone --branch repro/qwen25-flow-20261028 --single-branch \
-  https://github.com/wmz422/lvr_pipeline_new.git qwen25-flow-repro
-cd qwen25-flow-repro
-bash train_flow.sh --output runs/flow-4gpu
+# 仅打印配置，不下载、不启动 GPU、不写训练输出。
+bash train_qwen3_latent2.sh --gpus 4 --dry-run
+bash train_qwen3_reconstruction_only.sh --gpus 4 --dry-run
+bash train_qwen25_flow_4stage.sh --gpus 4 --dry-run
+
+# 八卡，显式选择 batch 和 offload；全局 batch 仍为 128。
+bash train_qwen25_flow_4stage.sh --gpus 8 \
+  --teacher-batch-size 2 --warmup-batch-size 4 --joint-batch-size 2 \
+  --zero-stage 3 --teacher-optimizer-device cpu --joint-optimizer-device cpu
 ```
-
-首次启动会安装缺失的仓库虚拟环境，下载并校验固定版本的数据和两个模型，
-重新执行数据筛选，构建 RGB / FP32 VAE 缓存，然后运行 Teacher → Warmup → Joint。
-每阶段保留验证；Joint 完成后自动导出并运行完整 11 项 benchmark 和评分。
-准备成功后会记录输入绑定，后续使用同一仓库恢复时复用已准备的数据、模型和缓存。
-原始训练逻辑、分辨率、数据、损失权重和答案提取规则保持不变。
-
-硬件参数由你手动指定，脚本不做自动测速、配置搜索或 OOM 后的自动降 batch。
-例如四卡配置完整写法为：
-
-```bash
-bash train_flow.sh \
-  --gpus 4 \
-  --teacher-batch-size 8 --warmup-batch-size 8 --joint-batch-size 4 \
-  --zero-stage 3 \
-  --teacher-optimizer-device cpu \
-  --warmup-optimizer-device cuda --joint-optimizer-device cuda \
-  --output runs/flow-4gpu
-
-# 八卡的另一组合法 batch；评测默认使用八卡。
-bash train_flow.sh \
-  --gpus 8 \
-  --teacher-batch-size 4 --warmup-batch-size 4 --joint-batch-size 2 \
-  --zero-stage 3 --warmup-zero-stage 2 \
-  --output runs/flow-8gpu
-```
-
-**全局 batch 固定为 128**：每个阶段自动计算 `accumulation = 128 / (GPU 数量 × 单卡 batch)`。
-必须整除，并且单卡 batch 至少为 2，以保留 Plain 的 64 条 epoch 尾批。
-例如四卡 Teacher 为 `4 × 8 × 4 = 128`，八卡 Teacher 为 `8 × 4 × 4 = 128`；
-Teacher / Joint 始终各 1,346 次更新，Warmup 始终 200 次。
-同时保留 Teacher=16、student=8 的原始梯度缩放参照，不随硬件参数改变。
 
 | 参数 | 作用 | 默认 |
-| --- | --- | --- |
-| `--gpus` | 单机训练卡数；必须能按固定 batch 和尾批分配 | 4 |
-| `--teacher-batch-size` / `--warmup-batch-size` / `--joint-batch-size` | 各阶段单卡 batch | 8 / 8 / 4 |
+|---|---|---|
+| `--gpus N` | 单机训练卡数 | 4 |
+| `--teacher-batch-size` / `--warmup-batch-size` / `--joint-batch-size` | 每卡 batch | 8 / 8 / 4 |
 | `--zero-stage 2\|3` | 全部阶段的 ZeRO 策略 | 3 |
-| `--teacher-zero-stage` / `--warmup-zero-stage` / `--joint-zero-stage` | 单独覆盖某阶段的 ZeRO 策略 | 跟随 `--zero-stage` |
-| `--teacher-optimizer-device cpu\|cuda` 等三个阶段参数 | 优化器放 CPU 或 GPU | cpu / cuda / cuda |
-| `--parameter-offload none\|cpu` | 是否把模型参数卸载到 CPU；cpu 要求各阶段均为 ZeRO-3 | none |
-| `--flow-generator-batch-size` | 冻结 Flow 生成器内部子 batch，不改变总 batch | 2 |
-| `--eval-gpus` | benchmark 推理卡数 | `min(训练卡数, 8)` |
+| `--teacher-zero-stage` / `--warmup-zero-stage` / `--joint-zero-stage` | 单独覆盖某阶段策略 | 跟随 `--zero-stage` |
+| `--teacher-optimizer-device` / `--warmup-optimizer-device` / `--joint-optimizer-device` | `cpu` 或 `cuda` | cpu / cuda / cuda |
+| `--parameter-offload none\|cpu` | 参数卸载到 CPU 时要求各阶段均为 ZeRO-3 | none |
+| `--flow-generator-batch-size` | 冻结 Flow 生成器内部子 batch | 2 |
+| `--eval-gpus N` | 完整 benchmark 推理卡数 | `min(训练卡数, 8)` |
+| `--output PATH` | 本组实验输出目录 | 见实验表 |
 | `--cpu-threads` | 每个训练进程的 CPU 线程数 | 8 |
+| `--preflight` | 正式训练前额外执行独立的每阶段 4 步 GPU 预检 | 关闭 |
+| `--skip-bootstrap` | 使用本 checkout 已准备的数据、模型和配置 | 关闭 |
+| `--data-source PATH_OR_URL` | 指定本地或 HTTPS 数据包 | 固定公开版本 |
 
-ZeRO-2 分片优化器状态和梯度，ZeRO-3 额外分片模型参数；CPU offload 用主机内存换取显存空间。
-具体选择取决于显存和互联条件，参数含义见 [DeepSpeed 文档](https://deepspeed.readthedocs.io/en/stable/zero3.html)。
-这些选择不会修改 batch、损失系数或精度，实际是否更快由平台决定。
+`--dry-run` 需要训练依赖已安装；`--help` 不需要安装环境。
+可通过 `CUDA_VISIBLE_DEVICES` 选择设备，通过 `LVR_TRAIN_PYTHON`、`LVR_SCORING_PYTHON` 指定已有的匹配环境。
+默认 `NCCL_P2P_DISABLE=1` 沿用原参考平台设置；不同平台可在新的 output 中显式调整。
 
-```bash
-# 只打印实际卡数、batch、累积、ZeRO/offload 和步数，不下载、不启动 GPU。
-bash train_flow.sh --gpus 2 --teacher-batch-size 4 \
-  --warmup-batch-size 4 --joint-batch-size 2 --dry-run
-
-# 使用相同硬件参数、相同 output 恢复。
-bash train_flow.sh --output runs/flow-4gpu --resume
-```
-
-这个入口默认直接开始正式训练，不自动进行 GPU 试跑；如需独立的每阶段 4 步预检，显式加 `--preflight`。
-预检不参与正式训练初始化，也不会搜索或改变硬件参数。
-数据和模型已通过下方手动流程准备时，可以加 `--skip-bootstrap` 跳过下载准备。
-本地数据包可通过 `--data-source /path/to/data-v1` 指定。
-`--help` 无需安装环境；`--dry-run` 需要训练依赖已安装。
-恢复时保留原有参数；更改 GPU、batch 或 ZeRO 策略应使用新的 output。
-
-## 手动准备环境和数据
-
-以下是把自动准备流程拆开执行的方式，也适用于只下载、检查数据。
-
-Linux；训练 Python 3.12，几何评分 Python 3.13。复现参考平台为 4 × A100 80GB、64 vCPU、450 GiB RAM。
-需要 NVIDIA 驱动支持所固定的 PyTorch CUDA 12.8 版本。请为 RGB/VAE 缓存和多份原生 ZeRO checkpoint 准备 TB 级磁盘。
-Teacher 单个原生 checkpoint 约 163 GiB；训练/导出与预检还会额外占空间。
+使用原参数、原输出目录续跑：
 
 ```bash
-git clone --branch repro/qwen25-flow-20261028 --single-branch \
-  https://github.com/wmz422/lvr_pipeline_new.git qwen25-flow-repro
-cd qwen25-flow-repro
-bash tools/setup.sh
+bash train_qwen3_latent2.sh --gpus 4 --resume
+bash train_qwen3_reconstruction_only.sh --gpus 4 --resume
+bash train_qwen25_flow_4stage.sh --gpus 4 --resume
 
-# 从公开数据集的固定版本下载并逐文件校验、恢复。
-.venv/bin/python reproduce.py restore-data
-# 如需显式传入地址，使用固定版本：
-# .venv/bin/python reproduce.py restore-data --source https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1/resolve/7068d035c60c09dc1b343438520bdbd12107e0de
-
-# 按锁定 revision 下载两个模型，并校验所有权重/配置文件。
-.venv/bin/python reproduce.py download-models
-
-# 重新执行 VStar 去污染与训练集去 SAT，逐字节比对冻结版本。
-.venv/bin/python reproduce.py prepare-data
-.venv/bin/python reproduce.py prepare-benchmarks --verify-only
-.venv/bin/python reproduce.py doctor
-.venv/bin/python reproduce.py test
+# 已训练完成，只补跑完整评测；也要保留原来的硬件和 output 参数。
+bash train_qwen25_flow_4stage.sh --gpus 4 --eval-only --resume
 ```
 
-`setup.sh` 只创建仓库内两个独立环境，不继承旧机器的 `.pth` 或虚拟环境。
-可用 `REPRO_TRAIN_PYTHON`、`REPRO_SCORE_PYTHON` 指定对应 Python 解释器。
-训练顶层依赖与传递依赖约束在 `requirements/`，完整原环境版本清单在 `manifests/environment_*.json`。
-模型下载沿用 Hugging Face 的标准认证和 `HF_ENDPOINT` 环境设置，不在仓库内保存令牌。
+自定义输出时，首次运行、续跑、补评测均传相同 `--output`。
+模型、损失、代码或输入绑定发生变化会拒绝混用旧运行；新实验不能接续旧三阶段或其他长度的 checkpoint。
+Teacher / Student joint 每 400 次更新保存滚动恢复点，673 / 1346 保存候选；warmup 在 100 / 200 保存候选。
+若在第一个可恢复 checkpoint 前中断，使用新的 output。
 
-配置会在首次 setup 时写入 `.local/`。直接复用已安装环境时先执行 `python reproduce.py configure`；
-可通过 `LVR_TRAIN_PYTHON`、`LVR_SCORING_PYTHON` 指定解释器，但版本必须通过 doctor。
-运行命令不依赖当前 shell 的工作目录。
+## 完整 benchmark 与结果
 
-## Flow 训练
-
-```bash
-# 不使用 GPU：打印实际三阶段配方、步数和评测命令。
-.venv/bin/python reproduce.py train --dry-run
-
-# CPU 配方解析、真实 processor/小样本 FP32 VAE 检查。
-.venv/bin/python reproduce.py cpu-check --output runs/flow
-
-# 默认用四张卡构建完整 RGB 和离线 FP32 VAE 缓存；也可以 --cache-device cpu。
-.venv/bin/python reproduce.py cache --output runs/flow
-
-# 每阶段 4 个更新、验证、checkpoint/导出预检；使用独立预检权重。
-.venv/bin/python reproduce.py preflight --output runs/flow
-
-# 自动预检 → Teacher → Warmup → Joint → 完整 11 项评测。
-.venv/bin/python reproduce.py train --output runs/flow --resume
-```
-
-预检不作为正式 Teacher 的初始化。正式 Teacher 从锁定基座开始；Warmup 使用正式 Teacher 导出，Joint 使用正式 Warmup。
-中断后用同一条带 `--resume` 的命令恢复；代码、数据、参数绑定变化会拒绝混用。
-若在首个可恢复 checkpoint 之前中断，原有逻辑要求使用新的 output。
-只训练不评测可加 `--train-only`；完成后用 `train --eval-only --resume --output ...` 补评。
-
-Teacher / Joint 每 400 次 optimizer update 保存滚动恢复点，保留最近一个；673 / 1346 保存候选。
-Warmup 在 100 / 200 保存候选。默认输出有 `workflow_plan.json`、`recipes/`、各阶段 `train.log`、
-`runtime_rank*.json`、CSV/TensorBoard、`checkpoints/` 和 `evaluation/predicted/`。
-`tuning/backup_checkpoints.py` 与 `verify_backup.py` 保留了独立备份工具，可按其 `--help` 指定源和目的目录。
-
-`NCCL_P2P_DISABLE=1` 是本次无 NVLink 平台的实际设置。其他硬件可显式设置为 0；这属于平台运行设置变化，应在新 output 中记录。
-本仓库没有自动改变 batch、精度、图像尺寸或跳过失败题目的逻辑。
-
-## Plain、Base 与 Flow 的统一评测
-
-```bash
-# 从相同基座开始复现 Plain 两轮，保留原 2,784 步 LR horizon / 83 步 warmup。
-.venv/bin/python reproduce.py plain --dry-run
-.venv/bin/python reproduce.py plain --output runs/plain --epochs 2
-
-# 原生 ZeRO 目录合并成评测需要的完整 Lightning 文件。
-.venv/bin/python reproduce.py export \
-  --checkpoint runs/plain/plain_sft/checkpoints/candidate-001346.ckpt \
-  --output runs/plain/exports/epoch1.ckpt
-
-.venv/bin/python reproduce.py evaluate --mode base --output results/base
-.venv/bin/python reproduce.py evaluate --mode plain \
-  --checkpoint runs/plain/exports/epoch1.ckpt --expected-step 1346 --output results/plain_epoch1
-.venv/bin/python reproduce.py evaluate --mode predicted \
-  --checkpoint runs/flow/joint/checkpoints/last_full.ckpt \
-  --source-checkpoint runs/flow/teacher_joint/checkpoints/student_source.ckpt \
-  --expected-step 1346 --output results/flow
-
-# 原始输出离线重评分，不重新推理。
-.venv/bin/python reproduce.py score --run results/flow --output results/flow_rescored
-```
-
-Plain 第 2 轮候选为 `candidate-002692.ckpt`。训练入口可用 `--resume` 指向同一 output 内完整原生 checkpoint。
-历史 Plain 曾在 696 步暂停后续训；这里从基座运行相同数据、长度分桶、尾批策略与 LR 日程，
-不依赖那份历史 checkpoint，也不声称与中断续训结果逐位一致。Flow 的 LR warmup/horizon 与 Plain 不同，保留本次实际设置。
+每组默认使用自己的 `joint/checkpoints/last_full.ckpt` 和第二阶段导出的 `student_source.ckpt`。
+完成全部推理和评分、通过完整性检查后才写入 `workflow_status.json` 的 `complete` 状态。
 
 | Benchmark | 评测记录 | 生成次数 |
-| --- | ---: | ---: |
+|---|---:|---:|
 | VStarBench | 191 | 191 |
 | HRBench4K | 800 | 800 |
 | HRBench8K | 800 | 800 |
@@ -262,53 +139,78 @@ Plain 第 2 轮候选为 `candidate-002692.ckpt`。训练入口可用 `--resume`
 | MIRA | 546 | 546 |
 | MathVista_testmini | 1,000 | 1,000 |
 | SAT | 150 | 300 |
-| 合计 | 9,957 | 10,107 |
+| **每组合计** | **9,957** | **10,107** |
 
-HRBench 的记录已含四轮选项排列，不代表 800 道独立问题。SAT 保留原顺序和反转顺序。
-当前模板是 `answer-parsing-2026-10-26-v2`：`tag_repair_v1`、`numeric_v1`、`format_compat_v1`。
-BLINK 取 14 个任务宏平均，Mentis 取 5 个任务均值；MathVista 使用本地数值提取，没有外部 judge。
-完整性检查拒绝缺题、重复题、变更 checkpoint/解析配置的混合结果。
-现有去污染只针对 VStar；其余历史重叠情况保留在 benchmark 的 `audit/overlap_policy.json`。
+三组合计 30,321 次生成。HRBench 记录已含四轮选项排列；SAT 保留原顺序和反转顺序。
+BLINK 取 14 个任务宏平均，Mentis 取 5 个任务均值；MathVista 使用本地数值提取。
+答案解析沿用 `answer-parsing-2026-10-26-v2`，拒绝缺题、重复题和不同 checkpoint / 解析配置的混合结果。
+训练集的去污染策略与历史重叠说明见 benchmark 的 `audit/overlap_policy.json`。
 
-## 公共原始数据下载与再处理
+每个实验目录保存：
 
-下面是只恢复元数据、从公共源重建图像的替代流程。完整恢复 `data-v1` 后无需再下载原图；
-训练原图下载器使用单独的原始文件目录布局，请在仅恢复元数据的新 checkout 中执行。
-
-```bash
-# 查看来源与固定版本，不下载。
-.venv/bin/python reproduce.py download-models --list
-.venv/bin/python reproduce.py download-raw --kind training --list
-.venv/bin/python reproduce.py download-raw --kind benchmarks --list
-
-# 训练原图按已冻结的 image_manifest 从上游恢复；审核后的 reasoning 数据仍使用 data-v1。
-.venv/bin/python reproduce.py restore-data --source /path/to/data-v1 --groups metadata reasoning_images
-.venv/bin/python reproduce.py download-raw --kind training
-.venv/bin/python reproduce.py verify-data --groups legacy_images
-
-# 只从 data-v1 恢复元数据后，可以从上游重建 benchmark 图像。
-.venv/bin/python reproduce.py restore-data --source /path/to/data-v1 --groups metadata
-.venv/bin/python reproduce.py download-raw --kind benchmarks
-.venv/bin/python reproduce.py prepare-benchmarks
+```text
+workflow_plan.json
+recipes/{teacher_alignment,teacher_joint,warmup,joint}.yaml
+teacher_alignment/checkpoints/last_full.ckpt
+teacher_joint/checkpoints/{last_full,student_source}.ckpt
+warmup/checkpoints/last_full.ckpt
+joint/checkpoints/last_full.ckpt
+evaluation/predicted/summary.json
+evaluation/predicted/main_table.md
+workflow_status.json
 ```
 
-benchmark 上游路径、revision、SHA256/Git blob hash 在 `manifests/benchmark_downloads.json`。
-处理器读取原始图像、zip/tar 和 Parquet 内嵌图像，只接受与冻结记录 SHA256 相同的图像；
-题目、选项、拆分、评分状态使用冻结协议元数据。不会因上游默认 split 改变而悄悄换题。
-完整源转换代码保留在 `scripts/paper_benchmarks/`、`scripts/reasoning_benchmarks/`，
-历史训练数据生成与审核代码保留在 `scripts/reasoning_data/`；这些历史构建脚本不是本仓库默认重建入口。
+## 固定模型与数据
 
-## 布局与验证边界
+模型下载和校验由清单锁定：
 
-- `reproduce.py`、`tools/`：可移植的统一入口、安装、下载、释放数据包和验收。
-- `lvr_pipeline_new/src/lvr/`：训练模型、collator、采样、checkpoint 与评分实现。
-- `doc/flow_reconstruction_parallel_20261015/flow_reconstruction/`：冻结 Flow generator 与 GT 处理。
-- `paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu/`：当前三阶段实现、离线缓存与测试。
-- `paper_experiments/2026-10-27-qwen25-no-sat-4epoch/script/continuation_runtime.py`：Plain 的尾批与恢复逻辑。
-- `manifests/original_code.json`：整理前来源哈希；`manifests/verification.json`：本次交付的实际验证范围。
-- `manifests/hardware_launcher.json`：一键入口、固定 batch、ZeRO/offload、空仓库预览和最新 CPU 回归验证记录。
+| 模型 | 固定 revision | 清单 |
+|---|---|---|
+| Qwen3-VL-4B-Instruct | `ebb281ec70b05090aa6165b016eac8ec08e71b17` | `manifests/qwen3_model.json` |
+| Qwen2.5-VL-7B-Instruct | `cc594898137f460bfe9f0759e9844b3ce807cfb5` | `manifests/qwen_model.json` |
+| FLUX.2-klein-base-4B | `a3b4f4849157f664bdbc776fd7453c2783562f4d` | `manifests/flow_model.json` |
 
-整理时不占用训练中的 GPU。CPU 测试与数据/协议校验不能替代新环境上的真实四卡预检，
-也不保证不同 CUDA、硬件或分布式归约顺序下逐位相同。训练运行中的旧目录没有改动。
-本次验证使用了版本匹配的已安装环境；尚未执行全新虚拟环境的联网安装，也未重跑完整 GPU 训练或模型推理评测。
-模型与数据沿用各自上游条款；本地整理不等于已公开发布，项目代码授权说明见 [NOTICE](NOTICE.md)。
+数据包：[Wing22/qwen25-flow-repro-data-v1](https://huggingface.co/datasets/Wing22/qwen25-flow-repro-data-v1)，
+固定 revision `7068d035c60c09dc1b343438520bdbd12107e0de`。
+20 个分片包含原始训练图像、冻结审核后的推理数据、长度清单和完整 benchmark。
+`manifests/data_release.json` 和相邻 `.files.jsonl.gz` 分别锁定分片和解包文件。
+包内不含模型权重、训练 checkpoint、RGB 或离线 VAE 缓存。
+精确复现使用冻结数据包；重新下载公共数据并生成描述不能保证相同样本集合。
+
+实验 1、3 使用 `assets/qwen3_descriptions/captions.jsonl.gz` 中的固定描述和已有推理样本的状态描述，
+按样本 ID 绑定，不重新生成标注；实验 2 不加载 Description sidecar。
+缓存身份包含路径、GT 协议与实现哈希，换目录后重新生成缓存绑定。
+
+首次自动准备也可拆开执行，以下以实验 3 为例：
+
+```bash
+bash tools/setup.sh
+(
+export LVR_FLOW_VARIANT=qwen25-four-stage
+.venv/bin/python reproduce.py configure
+.venv/bin/python reproduce.py restore-data
+.venv/bin/python reproduce.py download-models
+.venv/bin/python reproduce.py prepare-data
+.venv/bin/python reproduce.py prepare-benchmarks --verify-only
+.venv/bin/python reproduce.py doctor
+)
+```
+
+公共原始来源、文件校验和处理实现分别见 `manifests/benchmark_downloads.json`、
+`tools/download_raw.py`、`tools/prepare_benchmarks.py` 和 `lvr_pipeline_new/scripts/`。
+重新获取原图必须符合冻结图像哈希；不会随上游默认 split 改变而换题。
+
+## 代码验证与其他入口
+
+```bash
+# 仓库 CPU 回归，包括真实小模型梯度、四阶段训练、导出、重载和生成。
+.venv/bin/python reproduce.py configure
+.venv/bin/python reproduce.py test
+```
+
+当前三组实验的验证记录见 `manifests/three_experiments.json`。
+CPU 检查与小模型测试不代表完成正式 4B / 7B GPU 训练或全量 benchmark 推理；实际运行结果以各实验输出为准。
+
+已训练权重的 Teacher / Teacher shuffled / Predicted / Predicted shuffled / Zero 消融、
+公开权重和 cosine 复现见 [ablation/](ablation/README.md)。
+数据与模型沿用各自上游条款，见 [NOTICE.md](NOTICE.md)。

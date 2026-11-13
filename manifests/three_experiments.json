@@ -1,0 +1,416 @@
+{
+  "schema": "three-four-stage-flow-experiments-v1",
+  "verified_at_utc": "2026-11-13T12:53:22.507388+00:00",
+  "base_commit": "8199f89dbb3c5c13f94c6d097d46e50866e36076",
+  "branch": "repro/qwen25-flow-20261028",
+  "status": "passed_cpu_verification",
+  "entries": {
+    "train_qwen3_latent2.sh": {
+      "variant": "qwen3-latent-2",
+      "num_latents": 2,
+      "latent_dim": 512,
+      "stages": [
+        "teacher_alignment",
+        "teacher_joint",
+        "warmup",
+        "joint"
+      ],
+      "loss_weights": {
+        "teacher_alignment": {
+          "qa_loss_weight": 0.0,
+          "description_weight": 1.0,
+          "flow_weight": 0.1,
+          "latent_weight": 0.0
+        },
+        "teacher_joint": {
+          "qa_loss_weight": 1.0,
+          "description_weight": 1.0,
+          "flow_weight": 0.1,
+          "latent_weight": 0.0
+        },
+        "warmup": {
+          "qa_loss_weight": 1.0,
+          "description_weight": 0.0,
+          "flow_weight": 0.0,
+          "latent_weight": 1.0
+        },
+        "joint": {
+          "qa_loss_weight": 1.0,
+          "description_weight": 0.0,
+          "flow_weight": 0.0,
+          "latent_weight": 1.0
+        }
+      },
+      "optimizer_steps": {
+        "teacher_alignment": 1346,
+        "teacher_joint": 1346,
+        "warmup": 200,
+        "joint": 1346
+      },
+      "hardware": {
+        "global_batch": 128,
+        "epoch_tail_global_batch": 64,
+        "phases": {
+          "teacher_alignment": {
+            "gpus": 4,
+            "per_gpu_batch": 8,
+            "accumulation": 4,
+            "global_batch": 128,
+            "zero_stage": 3,
+            "optimizer_device": "cpu",
+            "parameter_device": "cuda",
+            "gradient_scale_reference": 16
+          },
+          "teacher_joint": {
+            "gpus": 4,
+            "per_gpu_batch": 8,
+            "accumulation": 4,
+            "global_batch": 128,
+            "zero_stage": 3,
+            "optimizer_device": "cpu",
+            "parameter_device": "cuda",
+            "gradient_scale_reference": 16
+          },
+          "warmup": {
+            "gpus": 4,
+            "per_gpu_batch": 8,
+            "accumulation": 4,
+            "global_batch": 128,
+            "zero_stage": 3,
+            "optimizer_device": "cuda",
+            "parameter_device": "cuda",
+            "gradient_scale_reference": 8
+          },
+          "joint": {
+            "gpus": 4,
+            "per_gpu_batch": 4,
+            "accumulation": 8,
+            "global_batch": 128,
+            "zero_stage": 3,
+            "optimizer_device": "cuda",
+            "parameter_device": "cuda",
+            "gradient_scale_reference": 8
+          }
+        },
+        "eval_gpus": 4,
+        "flow_generator_sub_batch": 2,
+        "automatic_hardware_tuning": false
+      },
+      "backbone": "Qwen3-VL-4B-Instruct",
+      "output": "runs/qwen3-flow-4stage-latent-2",
+      "comparison": "Only latent length changes from standard Qwen3 four-stage Flow: 8 -> 2."
+    },
+    "train_qwen3_reconstruction_only.sh": {
+      "variant": "qwen3-reconstruction-only",
+      "num_latents": 8,
+      "latent_dim": 512,
+      "stages": [
+        "teacher_alignment",
+        "teacher_joint",
+        "warmup",
+        "joint"
+      ],
+      "loss_weights": {
+        "teacher_alignment": {
+          "qa_loss_weight": 0.0,
+          "description_weight": 0.0,
+          "flow_weight": 0.1,
+          "latent_weight": 0.0
+        },
+        "teacher_joint": {
+          "qa_loss_weight": 0.0,
+          "description_weight": 0.0,
+          "flow_weight": 0.1,
+          "latent_weight": 0.0
+        },
+        "warmup": {
+          "qa_loss_weight": 1.0,
+          "description_weight": 0.0,
+          "flow_weight": 0.0,
+          "latent_weight": 1.0
+        },
+        "joint": {
+          "qa_loss_weight": 1.0,
+          "description_weight": 0.0,
+          "flow_weight": 0.0,
+          "latent_weight": 1.0
+        }
+      },
+      "optimizer_steps": {
+        "teacher_alignment": 1346,
+        "teacher_joint": 1346,
+        "warmup": 200,
+        "joint": 1346
+      },
+      "hardware": {
+        "global_batch": 128,
+        "epoch_tail_global_batch": 64,
+        "phases": {
+          "teacher_alignment": {
+            "gpus": 4,
+            "per_gpu_batch": 8,
+            "accumulation": 4,
+            "global_batch": 128,
+            "zero_stage": 3,
+            "optimizer_device": "cpu",
+            "parameter_device": "cuda",
+            "gradient_scale_reference": 16
+          },
+          "teacher_joint": {
+            "gpus": 4,
+            "per_gpu_batch": 8,
+            "accumulation": 4,
+            "global_batch": 128,
+            "zero_stage": 3,
+            "optimizer_device": "cpu",
+            "parameter_device": "cuda",
+            "gradient_scale_reference": 16
+          },
+          "warmup": {
+            "gpus": 4,
+            "per_gpu_batch": 8,
+            "accumulation": 4,
+            "global_batch": 128,
+            "zero_stage": 3,
+            "optimizer_device": "cuda",
+            "parameter_device": "cuda",
+            "gradient_scale_reference": 8
+          },
+          "joint": {
+            "gpus": 4,
+            "per_gpu_batch": 4,
+            "accumulation": 8,
+            "global_batch": 128,
+            "zero_stage": 3,
+            "optimizer_device": "cuda",
+            "parameter_device": "cuda",
+            "gradient_scale_reference": 8
+          }
+        },
+        "eval_gpus": 4,
+        "flow_generator_sub_batch": 2,
+        "automatic_hardware_tuning": false
+      },
+      "backbone": "Qwen3-VL-4B-Instruct",
+      "output": "runs/qwen3-reconstruction-only-4stage",
+      "comparison": "Keep all four stages; BOTH Teacher stages use Flow 0.1, QA 0 and Description 0; Student objectives unchanged."
+    },
+    "train_qwen25_flow_4stage.sh": {
+      "variant": "qwen25-four-stage",
+      "num_latents": 8,
+      "latent_dim": 512,
+      "stages": [
+        "teacher_alignment",
+        "teacher_joint",
+        "warmup",
+        "joint"
+      ],
+      "loss_weights": {
+        "teacher_alignment": {
+          "qa_loss_weight": 0.0,
+          "description_weight": 1.0,
+          "flow_weight": 0.1,
+          "latent_weight": 0.0
+        },
+        "teacher_joint": {
+          "qa_loss_weight": 1.0,
+          "description_weight": 1.0,
+          "flow_weight": 0.1,
+          "latent_weight": 0.0
+        },
+        "warmup": {
+          "qa_loss_weight": 1.0,
+          "description_weight": 0.0,
+          "flow_weight": 0.0,
+          "latent_weight": 1.0
+        },
+        "joint": {
+          "qa_loss_weight": 1.0,
+          "description_weight": 0.0,
+          "flow_weight": 0.0,
+          "latent_weight": 1.0
+        }
+      },
+      "optimizer_steps": {
+        "teacher_alignment": 1346,
+        "teacher_joint": 1346,
+        "warmup": 200,
+        "joint": 1346
+      },
+      "hardware": {
+        "global_batch": 128,
+        "epoch_tail_global_batch": 64,
+        "phases": {
+          "teacher_alignment": {
+            "gpus": 4,
+            "per_gpu_batch": 8,
+            "accumulation": 4,
+            "global_batch": 128,
+            "zero_stage": 3,
+            "optimizer_device": "cpu",
+            "parameter_device": "cuda",
+            "gradient_scale_reference": 16
+          },
+          "teacher_joint": {
+            "gpus": 4,
+            "per_gpu_batch": 8,
+            "accumulation": 4,
+            "global_batch": 128,
+            "zero_stage": 3,
+            "optimizer_device": "cpu",
+            "parameter_device": "cuda",
+            "gradient_scale_reference": 16
+          },
+          "warmup": {
+            "gpus": 4,
+            "per_gpu_batch": 8,
+            "accumulation": 4,
+            "global_batch": 128,
+            "zero_stage": 3,
+            "optimizer_device": "cuda",
+            "parameter_device": "cuda",
+            "gradient_scale_reference": 8
+          },
+          "joint": {
+            "gpus": 4,
+            "per_gpu_batch": 4,
+            "accumulation": 8,
+            "global_batch": 128,
+            "zero_stage": 3,
+            "optimizer_device": "cuda",
+            "parameter_device": "cuda",
+            "gradient_scale_reference": 8
+          }
+        },
+        "eval_gpus": 4,
+        "flow_generator_sub_batch": 2,
+        "automatic_hardware_tuning": false
+      },
+      "backbone": "Qwen2.5-VL-7B-Instruct",
+      "output": "runs/qwen25-flow-4stage",
+      "comparison": "Standard four-stage objectives on Qwen2.5-VL-7B-Instruct; pinned Qwen2.5 processor and model lock."
+    }
+  },
+  "shared_settings": {
+    "train": 172224,
+    "val": 7571,
+    "global_batch": 128,
+    "epoch_tail_global_batch": 64,
+    "original_pixels": 2000000,
+    "crop_pixels": 262144,
+    "latent_dim": 512,
+    "seed": 42,
+    "precision": "bf16-mixed",
+    "flow_weight": 0.1
+  },
+  "regression": {
+    "suites": [
+      38,
+      4,
+      36,
+      3,
+      45
+    ],
+    "discovered": 126,
+    "passed": 125,
+    "skipped": 1,
+    "skip_reason": "Existing official-answer roundtrip test: Local generated fixtures unavailable",
+    "log": ".local/three-experiments-published-tree-regression.log",
+    "log_sha256": "db642e75240b3eff32885ba5147fcd20c7e7bba84e890e112dda27c456208aaf",
+    "fixture_setup": "Generate checkout-local configs; bind the frozen benchmark release and pinned Qwen2.5 processor read-only for protocol tests.",
+    "project_suite_retested_after_fixture_binding": true
+  },
+  "small_model_checks": [
+    "Real tiny Qwen3-VL and frozen FLUX: 2/4/8/16 slots, all four stages, export, Student reload and greedy generation.",
+    "Flow-only Teacher stages: text decoder forbidden, exact 0.1 * Flow MSE, finite nonzero encoder/query/mu/mapper gradients; no QA/projector/frozen-generator gradients.",
+    "Flow-only stage-1 -> stage-2 -> export -> warmup -> joint -> checkpoint reload and generation; original zero text weights preserved in the exported source.",
+    "Real tiny Qwen2.5-VL: four-stage Description + Flow training, export, reload and generation.",
+    "Public launcher previews, independent outputs, hardware/resume forwarding and real Lightning recipe parsing for all three entries."
+  ],
+  "automatic_final_evaluation": {
+    "enabled_by_default_for_all_three": true,
+    "mode": "predicted",
+    "benchmarks": 11,
+    "records_per_experiment": 9957,
+    "generations_per_experiment": 10107,
+    "generations_for_three_experiments": 30321,
+    "checkpoint": "Each run joint/checkpoints/last_full.ckpt",
+    "source": "Each run teacher_joint/checkpoints/student_source.ckpt",
+    "marks_complete_only_after_full_scoring": true
+  },
+  "benchmark_protocol_audit": {
+    "records": 9957,
+    "generations": 10107,
+    "benchmarks": {
+      "VStarBench": 191,
+      "HRBench4K": 800,
+      "HRBench8K": 800,
+      "MME-RealWorld-Lite": 1919,
+      "BLINK": 1901,
+      "MentisOculi": 1250,
+      "VSP": 400,
+      "VisuLogic": 1000,
+      "MIRA": 546,
+      "MathVista_testmini": 1000,
+      "SAT": 300
+    },
+    "answer_parsing": {
+      "version": "answer-parsing-2026-10-26-v2",
+      "base_template_version": "answer-parsing-2026-10-26-v2",
+      "template_sha256": "26562d6a533384b11f20e9b958b392ed89de7f62fde703998d8454ece55ede14",
+      "wrapper_policy": "tag_repair_v1",
+      "mathvista_policy": "numeric_v1",
+      "answer_policy": "format_compat_v1",
+      "mira_policy": "strict"
+    }
+  },
+  "unchanged_inputs_sha256": {
+    "manifests/training_data.json": "4c2d5cc5e7a655ecdae1a6cbf9187100f78b0bf330c76fec0a1fe89cd458e937",
+    "manifests/data_release.json": "3f010350069c1466c6409d34ad34552f2fddd22ab7e31f3749c177a1357318fa",
+    "manifests/qwen_model.json": "53bd28d084b41090eed94e0fdeac3357c577fb1b40aa27add3ed782ea840c7b6",
+    "manifests/qwen3_model.json": "aad5ba32ee4735ffadbbe2a7766986181ae6481b498dc14dac140cd26c7382e3",
+    "manifests/flow_model.json": "946054c3b85b108472c1881325681023fa73de11034a1c1b5f48bb6ca27fa6bb"
+  },
+  "code_sha256": {
+    "tools/common.py": "59a315bf5f37e70353f7eeca68dd6350dc2049262e9aca2b0bcfd189d7faccbf",
+    "tools/start_flow.py": "61eba92075852e35bf5029e05472ed8ee4b40a4ac4020b533ff01887df105691",
+    "tools/doctor.py": "86717264a78bcf6f6de7abae084e891b26f5fd38eeb6caaeefd04e30f0f4441f",
+    "train_flow.sh": "009a029829376439846dd61165d3882fb286e120a1b07f927b180c3a6a601518",
+    "train_qwen3_latent2.sh": "4125bfd154737ddbf445a52e87c40553a9b5401a7a05025c1be8c3842d8101ca",
+    "train_qwen3_reconstruction_only.sh": "070880524e6fffa0d29e171b0b4ce9ef535c8024e424ee9c1b37c85afb9f710b",
+    "train_qwen25_flow_4stage.sh": "b2be6c3919e3bf9c026db85adf46b9d9e1c52c1f3892ffcdcb2123483d025806",
+    "paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu/script/run.py": "e4007da39e023ff4c8e551ea66471cd2b6b902d60f12b9701cb6c0ddeca0cafc",
+    "doc/flow_reconstruction_parallel_20261015/flow_reconstruction/teacher.py": "b3c5df25680e3912703dd45c4d72f070bff4ed7987b0532f3f0728b3dc1b8ceb",
+    "lvr_pipeline_new/src/lvr/models/visual_bottleneck.py": "e82aa66bf4ee0638aebda4fffd2b8fa19c2e58ce8f22e3f4d20fe007b9d1d255",
+    "lvr_pipeline_new/src/lvr/models/latent_prediction.py": "8ec84935ecba9abdac3885360095049debacf3fce148d5195b1007060bc49a1d",
+    "tests/test_current_experiments.py": "76438ce8474a84b1876c6e1062b5f2bf8963fe42f8425019a226bcc7cafe9153",
+    "tests/test_qwen3_profiles.py": "4588fedf7ae6e817a220768c2ad18fc8729634483e958f1d00f627fd52ef5fcf",
+    "paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu/tests/test_qwen3_training.py": "9c9283ba1b7df80c07f768fe39bd743a6d1a9282f82f674b777a92f3d0cad0f0",
+    "paper_experiments/2026-10-27-qwen25-flow-no-sat-4gpu/tests/test_qwen25_four_stage_training.py": "a499f820beb01fd91226abcc84d37732ed6329673b227ddadcebda159d366fc7",
+    "lvr_pipeline_new/tests/test_paper_benchmark.py": "9a39d60e9a6964e7c5f9002ac6a2878632c48d70cdae7b02a91ed0ec4c395ba7",
+    "README.md": "5bc2d1fb49d751586ec4f83cd80db8364fc3ad360bf5a4924238b68ecce37b6a",
+    "README_qwen3.md": "3ccda3cb50d14775ae68595a4ce7d3940dc4768096246d82a673cca97f602ffb"
+  },
+  "gpu_jobs_started": 0,
+  "not_run": [
+    "Full-size 4B/7B GPU training",
+    "Full benchmark model inference and new accuracy results",
+    "Fresh virtual environment installation"
+  ],
+  "original_workspace_regression": {
+    "suites": [
+      49,
+      4,
+      44,
+      3,
+      45
+    ],
+    "discovered": 145,
+    "passed": 144,
+    "skipped": 1,
+    "skip_reason": "Existing official-answer roundtrip test: Local generated fixtures unavailable",
+    "log": ".local/three-experiments-regression.log",
+    "log_sha256": "7598780b27560d5c6ef6ef84a1e757d785bedadd6b016b2cf35bdbf9ca8254d8"
+  },
+  "verification_scope": "Task-only Git tree verified in an isolated checkout; preexisting Qwen3.5 edits remain outside this commit."
+}

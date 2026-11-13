@@ -79,8 +79,8 @@ class VisualBottleneck(pl.LightningModule):
         if (not math.isfinite(reconstruction_weight) or reconstruction_weight < 0
                 or (reconstruction_weight and not num_latents)):
             raise ValueError("Reconstruction weight must be finite/nonnegative and requires latent slots")
-        if not qa_loss_weight and not description_weight:
-            raise ValueError("At least one supervised text objective must be enabled")
+        # A Flow subclass or an exported inference Teacher may have no text loss.
+        # Check the base training objective in training_step instead.
         if description_image_mode not in ("none", "original"):
             raise ValueError("Description image mode must be 'none' or 'original'")
         if num_latents < 0 or latent_dim < 1 or kl_weight < 0:
@@ -396,6 +396,8 @@ class VisualBottleneck(pl.LightningModule):
 
     @traced("training_step")
     def training_step(self, batch, batch_idx):
+        if not (self.hparams.qa_loss_weight or self.hparams.description_weight or self.hparams.reconstruction_weight):
+            raise ValueError("At least one training objective must be enabled")
         outputs = self(batch)
         steps = self.trainer.estimated_stepping_batches
         warmup = max(1, int(steps * self.hparams.kl_warmup_ratio))

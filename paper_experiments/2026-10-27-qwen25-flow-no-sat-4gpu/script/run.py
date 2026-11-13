@@ -206,8 +206,8 @@ def load_inputs(args):
 def build_recipes(args, plain, counts, settings, *, preflight=False):
     output = args.output / "preflight" if preflight else args.output
     num_latents = args.defaults.get("num_latents", 8)
-    if isinstance(num_latents, bool) or num_latents not in (4, 8, 16):
-        raise ValueError("Flow latent length must be 4, 8 or 16")
+    if isinstance(num_latents, bool) or num_latents not in (2, 4, 8, 16):
+        raise ValueError("Flow latent length must be 2, 4, 8 or 16")
     configs, steps = {}, {}
     for phase in phases(args):
         teacher = teacher_phase(phase)
@@ -297,7 +297,7 @@ def build_recipes(args, plain, counts, settings, *, preflight=False):
             "init_args": {"precision": "bf16-mixed", "reference_accumulation": reference_accumulation}}]
         if teacher:
             config["model"].update(num_latents=num_latents, description_weight=description_weight,
-                qa_loss_weight=0.0 if phase == "teacher_alignment" else 1.0,
+                qa_loss_weight=0.0 if phase == "teacher_alignment" else args.defaults.get("teacher_qa_weight", 1.0),
                 encoder_type="qwen", encoder_uses_question=args.teacher_sees_question,
                 lr_schedule_steps=updates, reconstruction_weight=0.0,
                 flow_model_path=args.defaults["flow_model"], flow_weight=args.defaults["flow_weight"],
@@ -334,8 +334,7 @@ def build_recipes(args, plain, counts, settings, *, preflight=False):
 def training_command(args, phase, recipe):
     return [sys.executable, "-m", "torch.distributed.run", "--standalone", "--nnodes=1",
             f"--nproc_per_node={args.gpus}", "--module",
-            ("reconstruction_experiment.description_teacher" if phase == "teacher_alignment" or
-             (teacher_phase(phase) and args.defaults.get("teacher_description_weight", 0.0))
+            ("reconstruction_experiment.description_teacher" if args.defaults.get("teacher_description_weight", 0.0)
              else "reconstruction_experiment.stage1") if teacher_phase(phase)
             else "reconstruction_experiment.student",
             "fit", "--config", str(recipe)]

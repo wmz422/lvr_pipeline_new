@@ -1,77 +1,91 @@
-# Qwen3-VL-4B：Flow 与三个消融实验
+# 三组四阶段 Flow：配置对照与阶段衔接
 
-四个入口使用同一份 V* 去重、训练集去 SAT 的数据：训练 **172,224** 条，验证 **7,571** 条。
-基座为锁定版本的 `Qwen/Qwen3-VL-4B-Instruct`，全局 batch 为 128。
-前三个脚本使用 `8 × 512` latent；最后一个脚本分别训练 `4 × 512`、`16 × 512`。
-Teacher 不看问题，Description 解码不输入图片。
+当前实验入口和完整启动方式见 [README.md](README.md)。本文件保留原文档路径，说明新的三组实验。
 
-## 四个脚本
-
-| 脚本 | 训练流程 | 默认输出 |
+| 实验 | 入口 | 与原标准 Qwen3 四阶段 Flow 的差异 |
 |---|---|---|
-| `train_qwen3_flow.sh` | 四阶段；Teacher 两阶段有 FLUX 重构、Description；最终阶段无 Description | `runs/qwen3-flow-4stage` |
-| `train_qwen3_no_flow_loss.sh` | 相同四阶段；Teacher 两阶段的 Flow loss 权重均为 0 | `runs/qwen3-no-flow-loss-4stage` |
-| `train_qwen3_no_latent_align.sh` | 复用 Flow 第二阶段导出权重；跳过 warmup，只训练最后阶段的答案 CE | `runs/qwen3-no-latent-align` |
-| `train_qwen3_latent_length.sh` | 依次独立训练 4、16 个 latent；每组均使用标准 Flow 四阶段并自动评测 | `runs/qwen3-flow-4stage-latent-4`、`runs/qwen3-flow-4stage-latent-16` |
+| 1. Latent 长度 2 | `train_qwen3_latent2.sh` | `num_latents: 8 → 2`；维度 512；其余配方一致 |
+| 2. Teacher 仅重构 | `train_qwen3_reconstruction_only.sh` | 两个 Teacher 阶段均 `qa_loss_weight=0`、`description_weight=0`、`flow_weight=0.1`；保留四阶段 |
+| 3. Qwen2.5 四阶段 | `train_qwen25_flow_4stage.sh` | 基座、processor 和模型锁改为 Qwen2.5-VL-7B-Instruct；训练目标与原标准 Qwen3 四阶段一致 |
 
-标准 Flow、去 Flow loss 和 latent 长度消融的阶段与训练目标：
+## 阶段与损失
 
-| 阶段 | 更新次数 | Flow 实验 | 去 Flow loss 实验 |
-|---|---:|---|---|
-| 1. Teacher alignment | 1,346 | Description CE + 0.1 × Flow MSE | Description CE |
-| 2. Teacher joint | 1,346 | QA CE + Description CE + 0.1 × Flow MSE | QA CE + Description CE |
-| 3. Student warmup | 200 | latent 对齐 | latent 对齐 |
-| 4. Student joint | 1,346 | QA CE + latent 对齐 | QA CE + latent 对齐 |
+记 `R` 为现有 FLUX Flow matching MSE，`D` 为 Description CE，`Q` 为 QA CE，`A` 为原 latent 对齐目标。
 
-Description、QA、latent 对齐的系数均为 1。第 4 阶段不执行 Description。
-去 Flow loss 的实验仍计算 Flow MSE 作为诊断，因此也需要 FLUX 权重和离线 VAE 缓存。
-它与 Flow 实验独立训练，两个 Teacher 阶段均从对应实验的 checkpoint 衔接。
+| 阶段 | 更新次数 | 原 Qwen3 基线 | 实验 1：2 latent | 实验 2：Teacher 仅重构 | 实验 3：Qwen2.5 |
+|---|---:|---|---|---|---|
+| Teacher alignment | 1,346 | D + 0.1R | D + 0.1R | **0.1R** | D + 0.1R |
+| Teacher joint | 1,346 | Q + D + 0.1R | Q + D + 0.1R | **0.1R** | Q + D + 0.1R |
+| Student warmup | 200 | A | A | A | A |
+| Student joint | 1,346 | Q + A | Q + A | Q + A | Q + A |
 
-`train_qwen3_latent_length.sh` 使用表中的 Flow 实验目标，依次执行：
-4 latent 四阶段训练 → 4 latent 完整评测 → 16 latent 四阶段训练 → 16 latent 完整评测。
-两组各自从同一基座开始训练 Teacher，再导出同长度的 Student source，
-不裁剪、重复或补齐 8 latent 的已有权重；评测占位数由各自 checkpoint 的长度决定。
-除 latent 数量外，维度 512、训练数据、分辨率、全局 batch、更新次数、loss 权重和 QA 混用策略均与标准 Flow 一致。
-两组复用相同的 RGB / VAE 数据缓存，但模型配置、checkpoint 和评测输出独立保存。
-8 latent 的结果直接使用第一个脚本，无需在长度消融中重复训练。
+QA、Description、latent 对齐的权重均为 1，重构权重为 0.1。
+四阶段各自创建优化器与学习率调度，后续阶段继承前一阶段模型权重。
+Student joint 均不执行 Description；前 200 步 QA 使用 20% Predicted latent，200–499 步 50%，500 步起 100%。
+验证与最终 benchmark 的 QA 使用 Predicted latent。
 
-`train_qwen3_no_latent_align.sh` 默认读取：
+实验 2 的两个 Teacher 阶段虽然目标相同，仍分别运行 1,346 次更新，第二阶段从第一阶段权重开始，
+不合并阶段、不跳过任何阶段。两个阶段的训练与验证都不执行 QA 或 Description 解码，
+重构梯度传回 Teacher encoder、latent query / mu head 和 Flow mapper；FLUX 保持冻结。
+导出的 QA backbone 与 latent projector 保留在 checkpoint 中，后续 Student 阶段照常使用。
+
+实验 1 的 Teacher 和 Student 都从该实验自身的基座 / 导出开始，所有 latent 槽位、query、预测头接口和评测占位均使用 2。
+不裁剪或补齐已有 8 latent checkpoint；不重复运行原来的 4、16 latent 实验。
+8 latent 对照使用原标准 Flow 的结果。
+
+实验 3 使用锁定的 Qwen2.5-VL-7B-Instruct 与原生 processor。
+相对旧 `train_flow.sh` 的 Qwen2.5 三阶段配方，增加 Teacher alignment，并在两个 Teacher 阶段启用固定 Description 监督。
+原来的三阶段配置和 checkpoint 不作为这组四阶段实验的续跑源。
+
+## 不变的实验条件
+
+训练 / 验证 **172,224 / 7,571** 条；VStar 去污染、训练集去 SAT；全局 batch **128**；
+原图预算 **2,000,000 pixels**，crop/helper **262,144 pixels**；BF16 mixed、seed **42**。
+沿用原标准 Flow 的学习率、损失系数、QA 混用、缓存数值精度和梯度缩放。
+Teacher 不看问题，Description 只使用 latent 和固定指令。
+实验 1、3 复用冻结描述，不生成新标注、不改变训练样本集合。
+实验 2 的启动和训练均不依赖 Description sidecar。
+
+默认四卡每卡 batch 为 Teacher 两阶段 8、warmup 8、joint 4；累积为 4、4、8。
+更改 GPU 卡数时保持 `GPU 数 × 每卡 batch × 累积 = 128`，每卡 batch 至少为 2，保留 64 条尾批。
+Teacher / Student 的 reference accumulation 分别保留 16 / 8。
+
+## 输出和初始化
+
+| 实验 | 本地配置 | 默认输出 |
+|---|---|---|
+| 1 | `.local/qwen3-latent-2-four-stage.yaml` | `runs/qwen3-flow-4stage-latent-2` |
+| 2 | `.local/qwen3-reconstruction-only-four-stage.yaml` | `runs/qwen3-reconstruction-only-4stage` |
+| 3 | `.local/qwen25-four-stage.yaml` | `runs/qwen25-flow-4stage` |
+
+每组依次衔接：
 
 ```text
-runs/qwen3-flow-4stage/teacher_joint/checkpoints/student_source.ckpt
+锁定基座
+  → teacher_alignment/checkpoints/last_full.ckpt
+  → teacher_joint/checkpoints/last_full.ckpt
+  → teacher_joint/checkpoints/student_source.ckpt（去除 Flow mapper，保留来源记录）
+  → warmup/checkpoints/last_full.ckpt
+  → joint/checkpoints/last_full.ckpt
+  → evaluation/predicted/
 ```
 
-它直接从第二阶段导出的权重初始化 latent predictor，不加载 warmup checkpoint。
-从第一步开始始终使用 Predicted latent，训练和验证均不读取 Teacher 辅助图，
-不执行 Teacher latent 前向、不计算 latent 对齐、Description 或 Flow loss。
-答案 CE 的梯度会传回 latent 预测头、query 和语言模型。
-前两个实验第 4 阶段保留原有 QA 混用策略：前 200 步 20% Predicted，
-200–499 步 50%，500 步起 100%。
+正式训练从自身第一阶段开始，不使用独立 preflight 权重初始化。
+三个入口各自配置、checkpoint、断点恢复和结果相互独立；RGB / FP32 VAE 缓存可共享。
+使用自定义 `--output` 时，该组后续所有阶段和评测都会跟随该目录。
 
-## 实验顺序
-
-在 Linux、NVIDIA GPU、Python 3.12 和 Python 3.13 已准备好的设备上，从仓库根目录按以下顺序执行：
+## 完整评测、续跑和补评
 
 ```bash
-# 按设备修改；卡数也可以分别传给每条命令。
 REPRO_GPUS=4
-
-bash train_qwen3_flow.sh --gpus "$REPRO_GPUS"
-bash train_qwen3_no_flow_loss.sh --gpus "$REPRO_GPUS"
-bash train_qwen3_no_latent_align.sh --gpus "$REPRO_GPUS"
-bash train_qwen3_latent_length.sh --gpus "$REPRO_GPUS"
+bash train_qwen3_latent2.sh --gpus "$REPRO_GPUS"
+bash train_qwen3_reconstruction_only.sh --gpus "$REPRO_GPUS"
+bash train_qwen25_flow_4stage.sh --gpus "$REPRO_GPUS"
 ```
 
-首次运行自动安装缺失环境、恢复固定数据、下载并校验模型。
-Flow、去 Flow loss、latent 长度消融构建并复用同一套 RGB / FP32 VAE 缓存；第三个脚本不构建缓存、不运行 FLUX。
-原有描述标注随仓库的 `assets/qwen3_descriptions/captions.jsonl.gz` 提供，
-按固定样本 ID 筛选并校验，不重新生成描述，不改变样本集合。
-
-**每个脚本默认在训练结束后自动运行完整 11 项 benchmark 和评分。**
-长度消融的 4、16 两组分别完成完整测试，因此四个脚本合计产生五组实验结果。
-评测使用各自最终 `joint/checkpoints/last_full.ckpt`，采用相同的 Predicted 协议；
-检查 9,957 条记录、10,107 次生成和全部 11 项评分完整后才标记完成。
-查看各输出目录下：
+每组训练后自动完成 **11 项 benchmark、9,957 条记录、10,107 次生成以及全部评分**。
+不向 benchmark 命令传入样本数量限制；评测采用各组最终 Student 和自身第二阶段导出。
+每组完成后查看：
 
 ```text
 evaluation/predicted/summary.json
@@ -79,67 +93,22 @@ evaluation/predicted/main_table.md
 workflow_status.json
 ```
 
-## 调整 GPU 和显存占用
-
-四个脚本均接受 `--gpus N`，评测默认使用 `min(N, 8)` 张卡，
-也可以用 `--eval-gpus N` 单独设置。
-指定可见 GPU，例如：
+`workflow_status.json` 只在训练阶段和完整评分均通过检查后标记 `complete`。
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 bash train_qwen3_flow.sh --gpus 2
+# 配置预览，三个入口都支持。
+bash train_qwen3_reconstruction_only.sh --gpus 4 --dry-run
+
+# 原参数和原输出续跑；每组分别执行。
+bash train_qwen3_reconstruction_only.sh --gpus 4 --resume
+
+# 训练已完成，只补完整评测。
+bash train_qwen3_reconstruction_only.sh --gpus 4 --eval-only --resume
+
+# 自定义路径从首次运行起保持一致。
+bash train_qwen25_flow_4stage.sh --gpus 4 --output runs/my-qwen25-flow
+bash train_qwen25_flow_4stage.sh --gpus 4 --output runs/my-qwen25-flow --resume
 ```
 
-默认每卡 batch：Teacher 两阶段 8、warmup 8、最终阶段 4；梯度累积自动按全局 batch 128 计算。
-显存不足时显式调整 batch 或 offload，例如：
-
-```bash
-bash train_qwen3_flow.sh --gpus 8 \
-  --teacher-batch-size 2 --warmup-batch-size 4 --joint-batch-size 2 \
-  --zero-stage 3 --teacher-optimizer-device cpu --joint-optimizer-device cpu
-```
-
-`GPU 数 × 每卡 batch` 必须整除 128，每卡 batch 至少为 2，以保留 64 条的 epoch 尾批。
-脚本不会自动搜索配置或在 OOM 后修改 batch。第三个实验只使用最终阶段的硬件参数。
-长度消融中的两组使用相同的 GPU、每卡 batch 和 offload 参数。
-
-## 自定义路径、预览与续跑
-
-使用自定义 Flow 输出时，第三个实验通过 `--source-run` 指向同一个 Flow 运行目录：
-
-```bash
-bash train_qwen3_flow.sh --gpus 4 --output runs/my-flow
-bash train_qwen3_no_latent_align.sh --gpus 4 \
-  --source-run runs/my-flow --output runs/my-no-latent-align
-```
-
-第三个实验要求源运行的第二阶段已完成并导出权重；源运行后续阶段可以继续执行。
-它不会修改源权重，也不会重复训练前两个阶段。
-
-长度消融的 `--output` 表示两组实验的父目录，分别写入 `latent-4`、`latent-16`：
-
-```bash
-bash train_qwen3_latent_length.sh --gpus 4 --output runs/my-latent-length
-```
-
-预览配置，不下载数据、不启动 GPU：
-
-```bash
-bash train_qwen3_flow.sh --gpus 4 --dry-run
-bash train_qwen3_no_flow_loss.sh --gpus 4 --dry-run
-bash train_qwen3_no_latent_align.sh --gpus 4 --dry-run
-bash train_qwen3_latent_length.sh --gpus 4 --dry-run
-```
-
-续跑使用相同参数、输出目录和 `--resume`；硬件配置也保持一致：
-
-```bash
-bash train_qwen3_flow.sh --gpus 4 --resume
-bash train_qwen3_no_flow_loss.sh --gpus 4 --resume
-bash train_qwen3_no_latent_align.sh --gpus 4 --resume
-bash train_qwen3_latent_length.sh --gpus 4 --resume
-```
-
-训练已经完成、只补跑评测时，加 `--eval-only --resume`。
-长度消融的续跑会检查两组状态，跳过已经完成的训练阶段，并接着执行未完成阶段和评测。
-自定义输出或源运行路径时，续跑和补评测也要传入相同的 `--output` / `--source-run`。
-新四阶段配置使用独立输出和本地配置文件，不接续旧三阶段 checkpoint。
+三个脚本均支持 `--gpus`、`--eval-gpus`、各阶段 batch / ZeRO / offload、`--preflight` 和 `--skip-bootstrap`。
+完整参数、固定模型版本和 benchmark 列表见 [README.md](README.md)。

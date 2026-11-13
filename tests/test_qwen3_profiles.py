@@ -31,8 +31,9 @@ print(json.dumps({'recipes':configs, 'steps':steps, 'output':str(DEFAULT_OUTPUT)
  'model':str(QWEN), 'local':str(LOCAL_FLOW), 'bootstrap':bootstrap_binding(),
  'evaluation':launch.evaluation_command(args, plain, steps), 'download_repo':specs('qwen')[1]}))
 '''
-        for variant in ('qwen25', 'qwen3', 'qwen3-no-flow-loss', 'qwen3-no-latent-align',
-                        'qwen3-latent-4', 'qwen3-latent-16'):
+        for variant in ('qwen25', 'qwen25-four-stage', 'qwen3',
+                        'qwen3-reconstruction-only', 'qwen3-no-flow-loss', 'qwen3-no-latent-align',
+                        'qwen3-latent-2', 'qwen3-latent-4', 'qwen3-latent-16'):
             env = dict(os.environ, LVR_FLOW_VARIANT=variant, CUDA_VISIBLE_DEVICES='', OMP_NUM_THREADS='2')
             # Each child previews its own profile, as the shell entry does.
             env.pop('LVR_FLOW_CONFIG', None)
@@ -71,6 +72,25 @@ print(json.dumps({'recipes':configs, 'steps':steps, 'output':str(DEFAULT_OUTPUT)
             ablation[phase]['model']['flow_weight'] = .1
         self.assertEqual(full, ablation)
 
+    def test_qwen25_four_stage_changes_only_backbone_and_uses_descriptions(self):
+        report = self.reports['qwen25-four-stage']
+        self.assertEqual(report['download_repo'], 'Qwen/Qwen2.5-VL-7B-Instruct')
+        self.assertIn('qwen_model.json', report['bootstrap']['locks'])
+        self.assertNotIn('qwen3_model.json', report['bootstrap']['locks'])
+        self.assertIn('qwen3_descriptions.json', report['bootstrap']['locks'])
+        self.assertEqual(self.normalized(report), self.normalized(self.reports['qwen3']))
+
+    def test_reconstruction_only_removes_both_teacher_text_objectives_and_keeps_students(self):
+        full = self.normalized(self.reports['qwen3'])
+        report = self.reports['qwen3-reconstruction-only']
+        self.assertNotIn('qwen3_descriptions.json', report['bootstrap']['locks'])
+        for phase in ('teacher_alignment', 'teacher_joint'):
+            config = full[phase]
+            config['model'].update(qa_loss_weight=0.0, description_weight=0.0)
+            config['data'].update(include_descriptions=False, caption_path=None)
+            config['trainer']['callbacks'][-1]['class_path'] = 'reconstruction_experiment.audit.NoDescriptionAudit'
+        self.assertEqual(self.normalized(report), full)
+
     def test_answer_only_reuses_flow_stage_two_and_has_no_teacher_inputs(self):
         report = self.reports['qwen3-no-latent-align']
         self.assertEqual(report['steps'], {'joint': 1346})
@@ -88,8 +108,8 @@ print(json.dumps({'recipes':configs, 'steps':steps, 'output':str(DEFAULT_OUTPUT)
         self.assertEqual(report['evaluation'][report['evaluation'].index('--source-checkpoint') + 1], source)
 
     def test_variants_bind_separate_outputs_and_correct_final_evaluation(self):
-        self.assertEqual(len({r['local'] for r in self.reports.values()}), 6)
-        self.assertEqual(len({r['output'] for r in self.reports.values()}), 6)
+        self.assertEqual(len({r['local'] for r in self.reports.values()}), len(self.reports))
+        self.assertEqual(len({r['output'] for r in self.reports.values()}), len(self.reports))
         for variant, report in self.reports.items():
             expected = {'teacher_joint':1346, 'warmup':200, 'joint':1346}
             if variant != 'qwen25' and variant != 'qwen3-no-latent-align':
@@ -105,12 +125,12 @@ print(json.dumps({'recipes':configs, 'steps':steps, 'output':str(DEFAULT_OUTPUT)
             self.assertEqual(command[command.index('--source-checkpoint') + 1],
                              source_output + '/teacher_joint/checkpoints/student_source.ckpt')
             self.assertEqual(report['bootstrap']['variant'], variant)
-            self.assertIn('qwen3_model.json' if variant != 'qwen25' else 'qwen_model.json',
+            self.assertIn('qwen_model.json' if variant in ('qwen25', 'qwen25-four-stage') else 'qwen3_model.json',
                           report['bootstrap']['locks'])
 
     def test_length_ablation_changes_only_the_number_of_slots_from_standard_flow(self):
         full = self.normalized(self.reports['qwen3'])
-        for length in (4, 16):
+        for length in (2, 4, 16):
             with self.subTest(num_latents=length):
                 report = self.reports[f'qwen3-latent-{length}']
                 configs = self.normalized(report)

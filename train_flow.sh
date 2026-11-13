@@ -10,8 +10,10 @@ for REPRO_ARG in "$@"; do
 Usage: bash train_flow.sh [options]
 
 Prepare pinned data/models and run the selected training stages with validation,
-then evaluate all 11 benchmarks. Qwen3 Flow/no-Flow use four stages; the
-no-latent-alignment entry reuses Flow stage 2 and runs answer-only Joint.
+then evaluate all 11 benchmarks. Current experiment entries:
+  train_qwen3_latent2.sh              Qwen3 four-stage Flow, 2 latents
+  train_qwen3_reconstruction_only.sh  Qwen3 four stages, Flow-only Teacher stages
+  train_qwen25_flow_4stage.sh          Qwen2.5-VL-7B-Instruct four-stage Flow
 Global batch is 128.
 Hardware settings are manual; no configuration search or automatic batch changes.
 

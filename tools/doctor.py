@@ -8,8 +8,8 @@ from pathlib import Path
 import subprocess
 import sys
 
-from common import (ROOT, PROJECT, EXPERIMENT, FLOW, QWEN, QWEN3, VARIANT, FLUX, SUITE,
-                    LOCAL_FLOW, environment, write_json, verify_descriptions)
+from common import (ROOT, PROJECT, EXPERIMENT, FLOW, QWEN, VARIANT, FLUX, SUITE,
+                    LOCAL_FLOW, environment, write_json, verify_descriptions, flow_defaults)
 from release import sha256
 
 
@@ -41,7 +41,7 @@ def main():
         raise ValueError(f'Scoring environment differs: {score_env}')
     report = {'status': 'passed', 'gpu_used': False, 'versions': actual, 'scoring': score_env,
               'scope': 'environment' if args.environment_only else 'environment_and_inputs'}
-    if QWEN3:
+    if flow_defaults().get('teacher_description_weight', 0.0):
         report['descriptions'] = verify_descriptions()
     if not args.environment_only:
         import yaml
@@ -57,7 +57,7 @@ def main():
                  'reasoning_val': len(read_records(PROJECT / 'data/processed/reasoning_v1/val'))}
         if sizes != {'legacy_train': 122706, 'reasoning_train': 49518, 'legacy_val': 1241, 'reasoning_val': 6330}:
             raise ValueError(f'Incorrect data counts: {sizes}')
-        if not QWEN3:
+        if VARIANT == 'qwen25':
             from lvr.data.crop_qa import CropQADataset
             from lvr.data.length_manifest import load_plain_qa_lengths
             items = CropQADataset(CLEAN / 'sft/train', CLEAN / 'align/train').items
@@ -66,7 +66,7 @@ def main():
             report['plain_length_binding'] = {'records': len(lengths), 'max_tokens': max(lengths), 'status': 'passed'}
             del items, lengths
         else:
-            report['plain_length_binding'] = 'Not used: Flow uses layout buckets, never Qwen2.5 token lengths'
+            report['plain_length_binding'] = 'Not used: four-stage Flow uses layout buckets'
         records, _, manifest = load_suite(SUITE)
         config = yaml.safe_load(LOCAL_FLOW.read_text())
         for key in ('plain_recipe', 'flow_model', 'suite'):
